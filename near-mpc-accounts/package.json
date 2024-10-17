@@ -8,10 +8,34 @@
     "build": "rimraf ./dist && esbuild src/cli.ts --bundle --platform=node --outfile=dist/near-mpc-accounts.js && cp .env.example ./dist/",
     "lint": "eslint . --ext .ts"
   },
+  "bunsan": {
+    "routes": [
+      {
+        "name": "generate-address",
+        "description": "Generate a new address",
+        "method": "POST",
+        "path": "/generate-address",
+        "params": [
+          {
+            "name": "chain",
+            "type": "string",
+            "description": "The blockchain to generate the address for",
+            "required": true
+          }
+        ]
+      },
+      {
+        "name": "help",
+        "description": "Show help information",
+        "method": "GET",
+        "path": "/help"
+      }
+    ]
+  },
   "keywords": [],
   "author": "RonNakamoto",
   "license": "MIT",
-  "description": "",
+  "description": "Bunsan extension that adds support for NEAR based MPC Account for multi-chain interactions",
   "devDependencies": {
     "@types/bn.js": "^5.1.6",
     "@types/elliptic": "^6.4.18",
