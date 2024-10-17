@@ -1,0 +1,40 @@
+{
+  "name": "near-mpc-accounts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/near-mpc-accounts.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/cli.ts",
+    "build": "rimraf ./dist && esbuild src/cli.ts --bundle --platform=node --outfile=dist/near-mpc-accounts.js && cp .env.example ./dist/",
+    "lint": "eslint . --ext .ts"
+  },
+  "keywords": [],
+  "author": "RonNakamoto",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/elliptic": "^6.4.18",
+    "@types/keccak": "^3.0.5",
+    "@types/node": "^22.7.5",
+    "esbuild": "^0.24.0",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "bech32": "^2.0.0",
+    "bn.js": "^5.2.1",
+    "bs58check": "^4.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "elliptic": "^6.5.7",
+    "ethers": "^5.7.2",
+    "hash.js": "^1.1.7",
+    "keccak": "^3.0.4",
+    "near-api-js": "^5.0.1",
+    "smol-toml": "^1.3.0"
+  }
+}
