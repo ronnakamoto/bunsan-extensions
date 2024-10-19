@@ -51,10 +51,15 @@ async function main() {
     );
 
   program
-    .command("generate-address <chain>")
+    .command("generate-address")
     .description("Generate a blockchain address using MPC")
-    .action(async (chain: string) => {
+    .requiredOption(
+      "--chain <chain>",
+      "Specify the blockchain (e.g., ethereum, bitcoin)",
+    )
+    .action(async (options) => {
       try {
+        const chain = options.chain;
         console.log(chalk.cyan(`\nGenerating ${chain} address...`));
         const address = await app.generateAddress(chain);
         console.log(chalk.green("\n✅ Address generated successfully!"));
@@ -68,10 +73,15 @@ async function main() {
     });
 
   program
-    .command("sign-payload <payload>")
+    .command("sign-payload")
     .description("Sign a payload using NEAR MPC")
-    .action(async (payload: string) => {
+    .requiredOption(
+      "--payload <payload>",
+      "Specify the payload to sign (in hexadecimal)",
+    )
+    .action(async (options) => {
       try {
+        const payload = options.payload;
         console.log(chalk.cyan("\nSigning payload..."));
         const signature = await app.signPayload(payload);
         if (signature) {
@@ -91,9 +101,9 @@ async function main() {
   program.addHelpText(
     "after",
     `
-  ${chalk.cyan("Example usage:")}
-    ${chalk.gray("$")} ${chalk.green("near-mpc-accounts generate-address ethereum")}
-    ${chalk.gray("$")} ${chalk.green("near-mpc-accounts sign-payload 0123456789abcdef")}
+    ${chalk.cyan("Example usage:")}
+        ${chalk.gray("$")} ${chalk.green("near-mpc-accounts generate-address --chain ethereum")}
+        ${chalk.gray("$")} ${chalk.green("near-mpc-accounts sign-payload --payload 0123456789abcdef")}
 
   ${chalk.cyan("For more information, visit:")} ${chalk.underline("https://docs.near.org/concepts/abstraction/chain-signatures")}
   `,

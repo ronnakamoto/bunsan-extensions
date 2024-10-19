@@ -68065,8 +68065,12 @@ async function main() {
       "NEAR MPC Accounts - Uniting blockchains with secure multi-party computation"
     )
   );
-  program.command("generate-address <chain>").description("Generate a blockchain address using MPC").action(async (chain) => {
+  program.command("generate-address").description("Generate a blockchain address using MPC").requiredOption(
+    "--chain <chain>",
+    "Specify the blockchain (e.g., ethereum, bitcoin)"
+  ).action(async (options) => {
     try {
+      const chain = options.chain;
       console.log(source_default.cyan(`
 Generating ${chain} address...`));
       const address = await app.generateAddress(chain);
@@ -68079,8 +68083,12 @@ Generating ${chain} address...`));
       console.error(source_default.red("\n\u274C Error generating address:"), error);
     }
   });
-  program.command("sign-payload <payload>").description("Sign a payload using NEAR MPC").action(async (payload) => {
+  program.command("sign-payload").description("Sign a payload using NEAR MPC").requiredOption(
+    "--payload <payload>",
+    "Specify the payload to sign (in hexadecimal)"
+  ).action(async (options) => {
     try {
+      const payload = options.payload;
       console.log(source_default.cyan("\nSigning payload..."));
       const signature = await app.signPayload(payload);
       if (signature) {
@@ -68099,9 +68107,9 @@ Generating ${chain} address...`));
   program.addHelpText(
     "after",
     `
-  ${source_default.cyan("Example usage:")}
-    ${source_default.gray("$")} ${source_default.green("near-mpc-accounts generate-address ethereum")}
-    ${source_default.gray("$")} ${source_default.green("near-mpc-accounts sign-payload 0123456789abcdef")}
+    ${source_default.cyan("Example usage:")}
+        ${source_default.gray("$")} ${source_default.green("near-mpc-accounts generate-address --chain ethereum")}
+        ${source_default.gray("$")} ${source_default.green("near-mpc-accounts sign-payload --payload 0123456789abcdef")}
 
   ${source_default.cyan("For more information, visit:")} ${source_default.underline("https://docs.near.org/concepts/abstraction/chain-signatures")}
   `
