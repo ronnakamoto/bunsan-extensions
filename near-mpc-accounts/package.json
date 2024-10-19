@@ -11,24 +11,40 @@
   "bunsan": {
     "routes": [
       {
-        "name": "generate-address",
-        "description": "Generate a new address",
-        "method": "POST",
         "path": "/generate-address",
-        "params": [
+        "method": "POST",
+        "command": "generate-address",
+        "description": "Generate a new address",
+        "parameters": [
           {
             "name": "chain",
             "type": "string",
+            "required": true,
             "description": "The blockchain to generate the address for",
-            "required": true
+            "source": "body"
           }
         ]
       },
       {
-        "name": "help",
-        "description": "Show help information",
+        "path": "/sign-payload",
+        "method": "POST",
+        "command": "sign-payload",
+        "description": "Sign a payload using NEAR MPC",
+        "parameters": [
+          {
+            "name": "payload",
+            "type": "string",
+            "required": true,
+            "description": "The payload to sign (in hexadecimal)",
+            "source": "body"
+          }
+        ]
+      },
+      {
+        "path": "/help",
         "method": "GET",
-        "path": "/help"
+        "command": "help",
+        "description": "Show help information"
       }
     ]
   },
