@@ -49,7 +49,6 @@ async function main() {
           // Clear console to ensure clean JSON output
           console.clear();
         } else {
-          console.log(chalk.cyan(ASCII_ART));
           console.log(chalk.white.bold("Welcome to NEAR MPC Accounts"));
           console.log(
             chalk.gray(
@@ -94,7 +93,6 @@ async function main() {
           // Clear console to ensure clean JSON output
           console.clear();
         } else {
-          console.log(chalk.cyan(ASCII_ART));
           console.log(chalk.white.bold("Welcome to NEAR MPC Accounts"));
           console.log(
             chalk.gray(
