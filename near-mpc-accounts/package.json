@@ -22,6 +22,13 @@
             "required": true,
             "description": "The blockchain to generate the address for",
             "source": "body"
+          },
+          {
+            "name": "json",
+            "type": "boolean",
+            "required": true,
+            "description": "Output the result as JSON",
+            "source": "body"
           }
         ]
       },
@@ -36,6 +43,13 @@
             "type": "string",
             "required": true,
             "description": "The payload to sign (in hexadecimal)",
+            "source": "body"
+          },
+          {
+            "name": "json",
+            "type": "boolean",
+            "required": true,
+            "description": "Output the result as JSON",
             "source": "body"
           }
         ]

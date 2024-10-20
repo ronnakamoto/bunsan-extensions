@@ -76,7 +76,7 @@ Generate a blockchain address using MPC:
 
 CLI:
 ```bash
-bunsan run-extension near-mpc-accounts -- generate-address <chain>
+bunsan run-extension near-mpc-accounts -- generate-address --chain <chain> [--json]
 ```
 
 HTTP:
@@ -85,11 +85,13 @@ POST /extensions/near-mpc-accounts/generate-address
 Content-Type: application/json
 
 {
-  "chain": "<chain>"
+  "chain": "<chain>",
+  "json": true
 }
 ```
 
 Replace `<chain>` with the desired blockchain (e.g., `ethereum`, `bitcoin`).
+The `--json` flag (CLI) or `"json": true` (HTTP) is optional (**required** for HTTP endpoint in Bunsan) and will return the result in JSON format.
 
 ### Sign Payload
 
@@ -97,7 +99,7 @@ Sign a payload using NEAR MPC:
 
 CLI:
 ```bash
-bunsan run-extension near-mpc-accounts -- sign-payload <payload>
+bunsan run-extension near-mpc-accounts -- sign-payload --payload <payload> [--json]
 ```
 
 HTTP:
@@ -106,7 +108,8 @@ POST /extensions/near-mpc-accounts/sign-payload
 Content-Type: application/json
 
 {
-  "payload": "<payload>"
+  "payload": "<payload>",
+  "json": true
 }
 ```
 
