@@ -68060,7 +68060,6 @@ async function main() {
       if (options.json) {
         console.clear();
       } else {
-        console.log(source_default.cyan(ASCII_ART));
         console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
         console.log(
           source_default.gray(
@@ -68097,7 +68096,6 @@ Generating ${options.chain} address...`));
       if (options.json) {
         console.clear();
       } else {
-        console.log(source_default.cyan(ASCII_ART));
         console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
         console.log(
           source_default.gray(
