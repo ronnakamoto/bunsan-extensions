@@ -9,13 +9,20 @@ import {
 
 export class MPCChainSignatures {
   private mpcSigner: MPCSigner;
+  private jsonOutput: boolean;
 
-  constructor() {
+  constructor(jsonOutput: boolean = false) {
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH);
+    this.jsonOutput = jsonOutput;
   }
 
   async initialize() {
     await this.mpcSigner.initialize();
+    if (!this.jsonOutput) {
+      console.log("Near Chain Signature (NCS) call details:");
+      console.log(`Near accountId ${NEAR_ACCOUNT_ID}`);
+      console.log(`NCS contractId ${MPC_CONTRACT_ID}`);
+    }
   }
 
   async generateAddress(chainType: string): Promise<string> {

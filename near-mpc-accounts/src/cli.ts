@@ -4,16 +4,13 @@ import { program } from "commander";
 import chalk from "chalk";
 import { MPCChainSignatures } from "./MPCChainSignatures";
 
-async function main() {
+function logNonJsonOutput(app) {
   console.log(chalk.white.bold("Welcome to NEAR MPC Accounts"));
   console.log(
     chalk.gray(
       "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n",
     ),
   );
-
-  const app = new MPCChainSignatures();
-  await app.initialize();
 
   console.log(chalk.yellow("🔐 NEAR MPC Account Details:"));
   console.log(chalk.yellow("━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
@@ -26,13 +23,13 @@ async function main() {
     chalk.green(app.getContractId()),
   );
   console.log();
+}
 
+async function main() {
   program
     .version("1.0.0")
     .description(
-      chalk.white(
-        "NEAR MPC Accounts - Uniting blockchains with secure multi-party computation",
-      ),
+      "NEAR MPC Accounts - Uniting blockchains with secure multi-party computation",
     );
 
   program
@@ -44,17 +41,12 @@ async function main() {
     )
     .option("--json", "Output the result as JSON")
     .action(async (options) => {
+      const app = new MPCChainSignatures(options.json);
+      await app.initialize();
+
       try {
-        if (options.json) {
-          // Clear console to ensure clean JSON output
-          console.clear();
-        } else {
-          console.log(chalk.white.bold("Welcome to NEAR MPC Accounts"));
-          console.log(
-            chalk.gray(
-              "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n",
-            ),
-          );
+        if (!options.json) {
+          logNonJsonOutput(app);
           console.log(chalk.cyan(`\nGenerating ${options.chain} address...`));
         }
 
@@ -88,17 +80,12 @@ async function main() {
     )
     .option("--json", "Output the result as JSON")
     .action(async (options) => {
+      const app = new MPCChainSignatures(options.json);
+      await app.initialize();
+
       try {
-        if (options.json) {
-          // Clear console to ensure clean JSON output
-          console.clear();
-        } else {
-          console.log(chalk.white.bold("Welcome to NEAR MPC Accounts"));
-          console.log(
-            chalk.gray(
-              "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n",
-            ),
-          );
+        if (!options.json) {
+          logNonJsonOutput(app);
           console.log(chalk.cyan("\nSigning payload..."));
         }
 
@@ -126,17 +113,6 @@ async function main() {
         process.exit(1);
       }
     });
-
-  program.addHelpText(
-    "after",
-    `
-    ${chalk.cyan("Example usage:")}
-        ${chalk.gray("$")} ${chalk.green("near-mpc-accounts generate-address --chain ethereum")}
-        ${chalk.gray("$")} ${chalk.green("near-mpc-accounts sign-payload --payload 0123456789abcdef")}
-
-  ${chalk.cyan("For more information, visit:")} ${chalk.underline("https://docs.near.org/concepts/abstraction/chain-signatures")}
-  `,
-  );
 
   program.parse(process.argv);
 }

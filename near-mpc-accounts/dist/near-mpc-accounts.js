@@ -67950,9 +67950,6 @@ var MPCSigner = class {
     };
     this.near = new Near(config);
     this.account = new Account(this.near.connection, accountId);
-    console.log("Near Chain Signature (NCS) call details:");
-    console.log("Near accountId", accountId);
-    console.log("NCS contractId", this.contractId);
   }
   async sign(payload) {
     const args = this.isProxyCall ? {
@@ -68004,11 +68001,17 @@ var MPCSigner = class {
 
 // src/MPCChainSignatures.ts
 var MPCChainSignatures = class {
-  constructor() {
+  constructor(jsonOutput = false) {
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH);
+    this.jsonOutput = jsonOutput;
   }
   async initialize() {
     await this.mpcSigner.initialize();
+    if (!this.jsonOutput) {
+      console.log("Near Chain Signature (NCS) call details:");
+      console.log(`Near accountId ${NEAR_ACCOUNT_ID}`);
+      console.log(`NCS contractId ${MPC_CONTRACT_ID}`);
+    }
   }
   async generateAddress(chainType) {
     const chain = ChainFactory.createChain(chainType);
@@ -68027,15 +68030,13 @@ var MPCChainSignatures = class {
 };
 
 // src/cli.ts
-async function main() {
+function logNonJsonOutput(app) {
   console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
   console.log(
     source_default.gray(
       "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n"
     )
   );
-  const app = new MPCChainSignatures();
-  await app.initialize();
   console.log(source_default.yellow("\u{1F510} NEAR MPC Account Details:"));
   console.log(source_default.yellow("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"));
   console.log(
@@ -68047,25 +68048,20 @@ async function main() {
     source_default.green(app.getContractId())
   );
   console.log();
+}
+async function main() {
   program.version("1.0.0").description(
-    source_default.white(
-      "NEAR MPC Accounts - Uniting blockchains with secure multi-party computation"
-    )
+    "NEAR MPC Accounts - Uniting blockchains with secure multi-party computation"
   );
   program.command("generate-address").description("Generate a blockchain address using MPC").requiredOption(
     "--chain <chain>",
     "Specify the blockchain (e.g., ethereum, bitcoin)"
   ).option("--json", "Output the result as JSON").action(async (options) => {
+    const app = new MPCChainSignatures(options.json);
+    await app.initialize();
     try {
-      if (options.json) {
-        console.clear();
-      } else {
-        console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
-        console.log(
-          source_default.gray(
-            "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n"
-          )
-        );
+      if (!options.json) {
+        logNonJsonOutput(app);
         console.log(source_default.cyan(`
 Generating ${options.chain} address...`));
       }
@@ -68092,16 +68088,11 @@ Generating ${options.chain} address...`));
     "--payload <payload>",
     "Specify the payload to sign (in hexadecimal)"
   ).option("--json", "Output the result as JSON").action(async (options) => {
+    const app = new MPCChainSignatures(options.json);
+    await app.initialize();
     try {
-      if (options.json) {
-        console.clear();
-      } else {
-        console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
-        console.log(
-          source_default.gray(
-            "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n"
-          )
-        );
+      if (!options.json) {
+        logNonJsonOutput(app);
         console.log(source_default.cyan("\nSigning payload..."));
       }
       const signature = await app.signPayload(options.payload);
@@ -68127,16 +68118,6 @@ Generating ${options.chain} address...`));
       process.exit(1);
     }
   });
-  program.addHelpText(
-    "after",
-    `
-    ${source_default.cyan("Example usage:")}
-        ${source_default.gray("$")} ${source_default.green("near-mpc-accounts generate-address --chain ethereum")}
-        ${source_default.gray("$")} ${source_default.green("near-mpc-accounts sign-payload --payload 0123456789abcdef")}
-
-  ${source_default.cyan("For more information, visit:")} ${source_default.underline("https://docs.near.org/concepts/abstraction/chain-signatures")}
-  `
-  );
   program.parse(process.argv);
 }
 main().catch(console.error);
