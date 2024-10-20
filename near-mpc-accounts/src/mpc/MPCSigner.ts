@@ -51,10 +51,6 @@ export class MPCSigner {
 
     this.near = new Near(config);
     this.account = new Account(this.near.connection, accountId);
-
-    console.log("Near Chain Signature (NCS) call details:");
-    console.log("Near accountId", accountId);
-    console.log("NCS contractId", this.contractId);
   }
 
   async sign(
