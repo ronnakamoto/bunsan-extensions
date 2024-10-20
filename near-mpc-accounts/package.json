@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node dist/near-mpc-accounts.js",
     "dev": "ts-node-dev --respawn --transpile-only src/cli.ts",
-    "build": "rimraf ./dist && esbuild src/cli.ts --bundle --platform=node --outfile=dist/near-mpc-accounts.js && cp .env.example ./dist/",
+    "build": "rimraf ./dist && esbuild src/cli.ts --bundle --platform=node --outfile=dist/near-mpc-accounts.js && cp .env.example ./dist/ && chmod +x build_binaries.sh && ./build_binaries.sh",
     "lint": "eslint . --ext .ts"
   },
   "bunsan": {
