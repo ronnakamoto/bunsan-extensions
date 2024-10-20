@@ -68027,20 +68027,7 @@ var MPCChainSignatures = class {
 };
 
 // src/cli.ts
-var ASCII_ART = `
- _   _ _____    _    ____    __  __ ____   ____
-| \\ | | ____|  / \\  |  _ \\  |  \\/  |  _ \\ / ___|
-|  \\| |  _|   / _ \\ | |_) | | |\\/| | |_) | |
-| |\\  | |___ / ___ \\|  _ <  | |  | |  __/| |___
-|_| \\_|_____/_/   \\_\\_| \\_\\ |_|  |_|_|    \\____|
-                 _    ____ ____ ___  _   _ _   _ _____ ____
-                / \\  / ___/ ___/ _ \\| | | | \\ | |_   _/ ___|
-               / _ \\| |  | |  | | | | | | |  \\| | | | \\___ \\
-              / ___ \\ |__| |__| |_| | |_| | |\\  | | |  ___) |
-             /_/   \\_\\____\\____\\___/ \\___/|_| \\_| |_| |____/
-`;
 async function main() {
-  console.log(source_default.cyan(ASCII_ART));
   console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
   console.log(
     source_default.gray(
@@ -68068,40 +68055,78 @@ async function main() {
   program.command("generate-address").description("Generate a blockchain address using MPC").requiredOption(
     "--chain <chain>",
     "Specify the blockchain (e.g., ethereum, bitcoin)"
-  ).action(async (options) => {
+  ).option("--json", "Output the result as JSON").action(async (options) => {
     try {
-      const chain = options.chain;
-      console.log(source_default.cyan(`
-Generating ${chain} address...`));
-      const address = await app.generateAddress(chain);
-      console.log(source_default.green("\n\u2705 Address generated successfully!"));
-      console.log(
-        source_default.white("\n\u{1F511} Your new address:"),
-        source_default.yellow(address)
-      );
+      if (options.json) {
+        console.clear();
+      } else {
+        console.log(source_default.cyan(ASCII_ART));
+        console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
+        console.log(
+          source_default.gray(
+            "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n"
+          )
+        );
+        console.log(source_default.cyan(`
+Generating ${options.chain} address...`));
+      }
+      const address = await app.generateAddress(options.chain);
+      if (options.json) {
+        console.log(JSON.stringify({ address }));
+      } else {
+        console.log(source_default.green("\n\u2705 Address generated successfully!"));
+        console.log(
+          source_default.white("\n\u{1F511} Your new address:"),
+          source_default.yellow(address)
+        );
+      }
     } catch (error) {
-      console.error(source_default.red("\n\u274C Error generating address:"), error);
+      if (options.json) {
+        console.log(JSON.stringify({ error: error.message }));
+      } else {
+        console.error(source_default.red("\n\u274C Error generating address:"), error);
+      }
+      process.exit(1);
     }
   });
   program.command("sign-payload").description("Sign a payload using NEAR MPC").requiredOption(
     "--payload <payload>",
     "Specify the payload to sign (in hexadecimal)"
-  ).action(async (options) => {
+  ).option("--json", "Output the result as JSON").action(async (options) => {
     try {
-      const payload = options.payload;
-      console.log(source_default.cyan("\nSigning payload..."));
-      const signature = await app.signPayload(payload);
-      if (signature) {
-        console.log(source_default.green("\n\u2705 Payload signed successfully!"));
-        console.log(source_default.white("\n\u{1F4DD} Signature details:"));
-        console.log(source_default.yellow("  r:"), signature.r);
-        console.log(source_default.yellow("  s:"), signature.s);
-        console.log(source_default.yellow("  v:"), signature.v);
+      if (options.json) {
+        console.clear();
       } else {
-        console.log(source_default.red("\n\u274C Failed to sign payload"));
+        console.log(source_default.cyan(ASCII_ART));
+        console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
+        console.log(
+          source_default.gray(
+            "Simplifying Cross-Chain Interactions with Secure Multi-Party Computation\n"
+          )
+        );
+        console.log(source_default.cyan("\nSigning payload..."));
+      }
+      const signature = await app.signPayload(options.payload);
+      if (options.json) {
+        console.log(JSON.stringify(signature));
+      } else {
+        if (signature) {
+          console.log(source_default.green("\n\u2705 Payload signed successfully!"));
+          console.log(source_default.white("\n\u{1F4DD} Signature details:"));
+          console.log(source_default.yellow("  r:"), signature.r);
+          console.log(source_default.yellow("  s:"), signature.s);
+          console.log(source_default.yellow("  v:"), signature.v);
+        } else {
+          console.log(source_default.red("\n\u274C Failed to sign payload"));
+        }
       }
     } catch (error) {
-      console.error(source_default.red("\n\u274C Error signing payload:"), error);
+      if (options.json) {
+        console.log(JSON.stringify({ error: error.message }));
+      } else {
+        console.error(source_default.red("\n\u274C Error signing payload:"), error);
+      }
+      process.exit(1);
     }
   });
   program.addHelpText(
