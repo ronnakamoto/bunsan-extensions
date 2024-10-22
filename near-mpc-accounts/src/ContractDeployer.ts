@@ -4,14 +4,25 @@ import { Address, Hex, getAddress, isAddress } from "viem";
 import { readFileSync } from "fs";
 import { ethers } from "ethers";
 
+export interface DeploymentResult {
+  success: boolean;
+  contractAddress?: string;
+  transactionHash?: string;
+  explorerUrl?: string;
+  error?: string;
+}
+
 export class ContractDeployer {
   private jsonOutput: boolean;
+  private waitForConfirmation: boolean;
 
   constructor(
     private transactionSigner: TransactionSigner,
     jsonOutput: boolean = false,
+    waitForConfirmation: boolean = true,
   ) {
     this.jsonOutput = jsonOutput;
+    this.waitForConfirmation = waitForConfirmation;
   }
 
   private log(...args: any[]) {
@@ -20,11 +31,22 @@ export class ContractDeployer {
     }
   }
 
-  private cleanBytecode(bytecode: string): string {
-    return bytecode
-      .trim()
-      .replace(/[\s\n\r]/g, "")
-      .replace(/^(?!0x)/, "0x");
+  private formatResponse(result: DeploymentResult): string {
+    return JSON.stringify(result, null, this.jsonOutput ? 0 : 2);
+  }
+
+  private handleError(error: any): never {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const result: DeploymentResult = {
+      success: false,
+      error: errorMessage,
+    };
+
+    if (this.jsonOutput) {
+      console.log(this.formatResponse(result));
+      process.exit(1);
+    }
+    throw error;
   }
 
   async deployContract(
@@ -33,7 +55,7 @@ export class ContractDeployer {
     abiPathOrJson: string,
     fromAddress: string,
     constructorArgs: any[] = [],
-  ): Promise<{ contractAddress: string; transactionHash: string }> {
+  ): Promise<DeploymentResult> {
     try {
       this.log("\nPreparing contract deployment...");
 
@@ -130,56 +152,55 @@ export class ContractDeployer {
       );
 
       this.log("Transaction hash:", txHash);
-      this.log("Waiting for deployment confirmation...");
 
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      });
-
-      if (receipt.status !== "success") {
-        throw new Error("Contract deployment failed");
-      }
-
-      const result = {
+      let result: DeploymentResult = {
+        success: true,
         contractAddress: calculatedContractAddress,
         transactionHash: txHash,
         explorerUrl: chain.getExplorerUrl(txHash),
       };
 
-      if (this.jsonOutput) {
-        console.log(JSON.stringify(result));
-      } else {
-        this.log("\nContract deployed successfully!");
-        this.log("Contract address:", result.contractAddress);
-        this.log("Transaction hash:", result.transactionHash);
-        this.log("Explorer link:", result.explorerUrl);
+      if (this.waitForConfirmation) {
+        this.log("Waiting for deployment confirmation...");
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({
+            hash: txHash,
+            timeout: 120_000, // 2 minutes timeout
+          });
+
+          if (receipt.status !== "success") {
+            throw new Error("Contract deployment failed");
+          }
+        } catch (error) {
+          if (error.message.includes("Timed out")) {
+            // If we timeout but have the transaction hash, we can still return a partial success
+            result = {
+              ...result,
+              success: true,
+              error:
+                "Transaction sent but confirmation timed out. Please check the explorer for status.",
+            };
+          } else {
+            throw error;
+          }
+        }
       }
 
-      // Exit the process after successful deployment
-      process.exitCode = 0;
-      setTimeout(() => process.exit(0), 1000); // Give time for any pending logs
+      if (this.jsonOutput) {
+        console.log(this.formatResponse(result));
+        process.exit(0);
+      }
 
       return result;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage,
-          }),
-        );
-      } else {
-        console.error("\nDeployment failed:", errorMessage);
-      }
-
-      // Exit with error code
-      process.exitCode = 1;
-      setTimeout(() => process.exit(1), 1000);
-
-      throw error;
+      return this.handleError(error);
     }
+  }
+
+  private cleanBytecode(bytecode: string): string {
+    return bytecode
+      .trim()
+      .replace(/[\s\n\r]/g, "")
+      .replace(/^(?!0x)/, "0x");
   }
 }

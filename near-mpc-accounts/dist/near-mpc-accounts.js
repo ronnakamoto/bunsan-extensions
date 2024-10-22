@@ -80346,6 +80346,7 @@ if (!NEAR_ACCOUNT_ID || !NEAR_PRIVATE_KEY || !MPC_PATH || !MPC_CONTRACT_ID || !M
 }
 
 // src/mpc/MPCSigner.ts
+var import_console = require("console");
 var { Near, Account, keyStores, KeyPair, utils } = nearAPI;
 var MPCSigner = class {
   constructor(mpcContractId, path, jsonOutput = false) {
@@ -80354,6 +80355,11 @@ var MPCSigner = class {
     this.isProxyCall = NEAR_PROXY_CONTRACT === "true";
     this.accountId = NEAR_PROXY_ACCOUNT === "true" ? NEAR_PROXY_ACCOUNT_ID : NEAR_ACCOUNT_ID;
     this.contractId = this.isProxyCall ? NEAR_PROXY_ACCOUNT_ID : mpcContractId;
+    this.rpcLogger = new import_console.Console({
+      stdout: process.stdout,
+      stderr: process.stderr,
+      ignoreErrors: true
+    });
   }
   log(...args) {
     if (!this.jsonOutput) {
@@ -80380,10 +80386,31 @@ var MPCSigner = class {
       nodeUrl: "https://rpc.testnet.near.org",
       walletUrl: "https://testnet.mynearwallet.com/",
       helperUrl: "https://helper.testnet.near.org",
-      explorerUrl: "https://testnet.nearblocks.io"
+      explorerUrl: "https://testnet.nearblocks.io",
+      // Add logger configuration to suppress logs
+      logger: this.jsonOutput ? {
+        log: () => {
+        },
+        warn: () => {
+        },
+        error: () => {
+        }
+      } : this.rpcLogger
     };
     this.near = new Near(config);
     this.account = new Account(this.near.connection, this.accountId);
+    if (this.jsonOutput) {
+      this.account.connection.provider.sendJsonRpc = async (...args) => {
+        try {
+          return await this.account.connection.provider.__proto__.sendJsonRpc.apply(
+            this.account.connection.provider,
+            args
+          );
+        } catch (error) {
+          throw error;
+        }
+      };
+    }
   }
   async sign(payload, pathOverride) {
     const usePath = pathOverride || this.path;
@@ -80468,17 +80495,30 @@ var MPCSigner = class {
 var import_fs = require("fs");
 var import_ethers = __toESM(require_lib32());
 var ContractDeployer = class {
-  constructor(transactionSigner, jsonOutput = false) {
+  constructor(transactionSigner, jsonOutput = false, waitForConfirmation = true) {
     this.transactionSigner = transactionSigner;
     this.jsonOutput = jsonOutput;
+    this.waitForConfirmation = waitForConfirmation;
   }
   log(...args) {
     if (!this.jsonOutput) {
       console.log(...args);
     }
   }
-  cleanBytecode(bytecode) {
-    return bytecode.trim().replace(/[\s\n\r]/g, "").replace(/^(?!0x)/, "0x");
+  formatResponse(result) {
+    return JSON.stringify(result, null, this.jsonOutput ? 0 : 2);
+  }
+  handleError(error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const result = {
+      success: false,
+      error: errorMessage
+    };
+    if (this.jsonOutput) {
+      console.log(this.formatResponse(result));
+      process.exit(1);
+    }
+    throw error;
   }
   async deployContract(chain, bytecodePathOrHex, abiPathOrJson, fromAddress, constructorArgs = []) {
     try {
@@ -80556,45 +80596,46 @@ var ContractDeployer = class {
         normalizedAddress
       );
       this.log("Transaction hash:", txHash);
-      this.log("Waiting for deployment confirmation...");
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash
-      });
-      if (receipt.status !== "success") {
-        throw new Error("Contract deployment failed");
-      }
-      const result = {
+      let result = {
+        success: true,
         contractAddress: calculatedContractAddress,
         transactionHash: txHash,
         explorerUrl: chain.getExplorerUrl(txHash)
       };
-      if (this.jsonOutput) {
-        console.log(JSON.stringify(result));
-      } else {
-        this.log("\nContract deployed successfully!");
-        this.log("Contract address:", result.contractAddress);
-        this.log("Transaction hash:", result.transactionHash);
-        this.log("Explorer link:", result.explorerUrl);
+      if (this.waitForConfirmation) {
+        this.log("Waiting for deployment confirmation...");
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({
+            hash: txHash,
+            timeout: 12e4
+            // 2 minutes timeout
+          });
+          if (receipt.status !== "success") {
+            throw new Error("Contract deployment failed");
+          }
+        } catch (error) {
+          if (error.message.includes("Timed out")) {
+            result = {
+              ...result,
+              success: true,
+              error: "Transaction sent but confirmation timed out. Please check the explorer for status."
+            };
+          } else {
+            throw error;
+          }
+        }
       }
-      process.exitCode = 0;
-      setTimeout(() => process.exit(0), 1e3);
+      if (this.jsonOutput) {
+        console.log(this.formatResponse(result));
+        process.exit(0);
+      }
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage
-          })
-        );
-      } else {
-        console.error("\nDeployment failed:", errorMessage);
-      }
-      process.exitCode = 1;
-      setTimeout(() => process.exit(1), 1e3);
-      throw error;
+      return this.handleError(error);
     }
+  }
+  cleanBytecode(bytecode) {
+    return bytecode.trim().replace(/[\s\n\r]/g, "").replace(/^(?!0x)/, "0x");
   }
 };
 
@@ -80707,10 +80748,6 @@ var MPCChainSignatures = class {
     this.jsonOutput = jsonOutput;
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH, jsonOutput);
     this.transactionSigner = new TransactionSigner(this.mpcSigner, jsonOutput);
-    this.contractDeployer = new ContractDeployer(
-      this.transactionSigner,
-      jsonOutput
-    );
   }
   log(...args) {
     if (!this.jsonOutput) {
@@ -80827,10 +80864,16 @@ Generating ${chainType} address...`);
       throw error;
     }
   }
-  async deployContract(chainType, bytecodePathOrHex, abiPathOrJSON, fromAddress, constructorArgs = []) {
+  async deployContract(chainType, bytecodePathOrHex, abiPathOrJSON, fromAddress, options = {}, constructorArgs = []) {
     if (!this.initialized) {
       await this.initialize();
     }
+    this.contractDeployer = new ContractDeployer(
+      this.transactionSigner,
+      this.jsonOutput,
+      options.waitForConfirmation ?? true
+      // default to true if not specified
+    );
     if (!fromAddress || !isAddress(fromAddress)) {
       throw new Error(`Invalid address format: ${fromAddress}`);
     }
@@ -80983,53 +81026,22 @@ Generating ${options.chain} address...`));
       handleError(error, Boolean(options.json));
     }
   });
-  program.command("deploy-contract").description("Deploy a smart contract using NEAR MPC").requiredOption("--chain <chain>", "Specify the target blockchain").requiredOption("--from <address>", "Address to deploy from").requiredOption(
-    "--bytecode <bytecode>",
-    "Contract bytecode (hexadecimal) or path to .bin file"
-  ).requiredOption(
-    "--abi <abi>",
-    "Contract ABI (JSON string) or path to .json file"
-  ).option("--args <args>", "Constructor arguments as JSON array").option("--json", "Output the result as JSON").action(async (options) => {
-    const jsonOutput = Boolean(options.json);
-    const app = new MPCChainSignatures(jsonOutput);
+  program.command("deploy-contract").description("Deploy a smart contract").requiredOption("--chain <chain>", "Chain to deploy to").requiredOption("--from <address>", "Address to deploy from").requiredOption(
+    "--bytecode <path>",
+    "Path to contract bytecode or hex string"
+  ).requiredOption("--abi <path>", "Path to contract ABI or JSON string").option("--json", "Output in JSON format").option("--no-confirmation", "Do not wait for transaction confirmation").option("--constructor-args [args...]", "Constructor arguments").action(async (options) => {
     try {
-      const constructorArgs = options.args ? JSON.parse(options.args) : [];
-      if (!options.json) {
-        logNonJsonOutput(app);
-        console.log(
-          source_default.cyan(`
-Deploying contract to ${options.chain}...`)
-        );
-      }
-      const result = await app.deployContract(
+      const mpc = new MPCChainSignatures(options.json || false);
+      const result = await mpc.deployContract(
         options.chain,
         options.bytecode,
         options.abi,
         options.from,
-        constructorArgs
+        { waitForConfirmation: options.confirmation !== false },
+        options.constructorArgs || []
       );
-      if (options.json) {
-        outputJson({
-          success: true,
-          data: {
-            contractAddress: result.contractAddress,
-            transactionHash: result.transactionHash
-          }
-        });
-      } else {
-        console.log(source_default.green("\n\u2705 Contract deployed successfully!"));
-        console.log(
-          source_default.white("\n\u{1F4C4} Contract address:"),
-          source_default.yellow(result.contractAddress)
-        );
-        console.log(
-          source_default.white("\u{1F4DD} Transaction hash:"),
-          source_default.yellow(result.transactionHash)
-        );
-        process.exit(0);
-      }
     } catch (error) {
-      handleError(error, Boolean(options.json));
+      process.exit(1);
     }
   });
   process.on("uncaughtException", (error) => {

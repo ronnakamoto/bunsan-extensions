@@ -157,63 +157,34 @@ async function main(): Promise<void> {
 
   program
     .command("deploy-contract")
-    .description("Deploy a smart contract using NEAR MPC")
-    .requiredOption("--chain <chain>", "Specify the target blockchain")
+    .description("Deploy a smart contract")
+    .requiredOption("--chain <chain>", "Chain to deploy to")
     .requiredOption("--from <address>", "Address to deploy from")
     .requiredOption(
-      "--bytecode <bytecode>",
-      "Contract bytecode (hexadecimal) or path to .bin file",
+      "--bytecode <path>",
+      "Path to contract bytecode or hex string",
     )
-    .requiredOption(
-      "--abi <abi>",
-      "Contract ABI (JSON string) or path to .json file",
-    )
-    .option("--args <args>", "Constructor arguments as JSON array")
-    .option("--json", "Output the result as JSON")
+    .requiredOption("--abi <path>", "Path to contract ABI or JSON string")
+    .option("--json", "Output in JSON format")
+    .option("--no-confirmation", "Do not wait for transaction confirmation")
+    .option("--constructor-args [args...]", "Constructor arguments")
     .action(async (options) => {
-      const jsonOutput = Boolean(options.json);
-      const app = new MPCChainSignatures(jsonOutput);
-
       try {
-        const constructorArgs = options.args ? JSON.parse(options.args) : [];
+        const mpc = new MPCChainSignatures(options.json || false);
 
-        if (!options.json) {
-          logNonJsonOutput(app);
-          console.log(
-            chalk.cyan(`\nDeploying contract to ${options.chain}...`),
-          );
-        }
-
-        const result = await app.deployContract(
+        const result = await mpc.deployContract(
           options.chain,
           options.bytecode,
           options.abi,
           options.from,
-          constructorArgs,
+          { waitForConfirmation: options.confirmation !== false },
+          options.constructorArgs || [],
         );
 
-        if (options.json) {
-          outputJson({
-            success: true,
-            data: {
-              contractAddress: result.contractAddress,
-              transactionHash: result.transactionHash,
-            },
-          });
-        } else {
-          console.log(chalk.green("\n✅ Contract deployed successfully!"));
-          console.log(
-            chalk.white("\n📄 Contract address:"),
-            chalk.yellow(result.contractAddress),
-          );
-          console.log(
-            chalk.white("📝 Transaction hash:"),
-            chalk.yellow(result.transactionHash),
-          );
-          process.exit(0);
-        }
+        // The result handling is now managed by the ContractDeployer class
       } catch (error) {
-        handleError(error, Boolean(options.json));
+        // Error handling is now managed by the ContractDeployer class
+        process.exit(1);
       }
     });
 

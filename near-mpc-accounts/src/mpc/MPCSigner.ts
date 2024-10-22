@@ -9,6 +9,7 @@ import {
   NEAR_PROXY_PRIVATE_KEY,
 } from "../config";
 import { KeyPairString } from "near-api-js/lib/utils/key_pair";
+import { Console } from "console";
 
 const { Near, Account, keyStores, KeyPair, utils } = nearAPI;
 
@@ -18,6 +19,7 @@ export class MPCSigner {
   private isProxyCall: boolean;
   private accountId: string;
   private contractId: string;
+  private rpcLogger: Console;
 
   constructor(
     mpcContractId: string,
@@ -28,6 +30,13 @@ export class MPCSigner {
     this.accountId =
       NEAR_PROXY_ACCOUNT === "true" ? NEAR_PROXY_ACCOUNT_ID! : NEAR_ACCOUNT_ID;
     this.contractId = this.isProxyCall ? NEAR_PROXY_ACCOUNT_ID! : mpcContractId;
+
+    // Create a custom logger that only logs when not in JSON mode
+    this.rpcLogger = new Console({
+      stdout: process.stdout,
+      stderr: process.stderr,
+      ignoreErrors: true,
+    });
   }
 
   private log(...args: any[]) {
@@ -62,10 +71,33 @@ export class MPCSigner {
       walletUrl: "https://testnet.mynearwallet.com/",
       helperUrl: "https://helper.testnet.near.org",
       explorerUrl: "https://testnet.nearblocks.io",
+      // Add logger configuration to suppress logs
+      logger: this.jsonOutput
+        ? {
+            log: () => {},
+            warn: () => {},
+            error: () => {},
+          }
+        : this.rpcLogger,
     };
 
     this.near = new Near(config);
     this.account = new Account(this.near.connection, this.accountId);
+
+    // Override the default console.log for RPC calls if in JSON mode
+    if (this.jsonOutput) {
+      this.account.connection.provider.sendJsonRpc = async (...args) => {
+        try {
+          // @ts-ignore - Accessing private property
+          return await this.account.connection.provider.__proto__.sendJsonRpc.apply(
+            this.account.connection.provider,
+            args,
+          );
+        } catch (error) {
+          throw error;
+        }
+      };
+    }
   }
 
   async sign(
@@ -74,7 +106,6 @@ export class MPCSigner {
   ): Promise<{ r: Buffer; s: Buffer; v: number } | undefined> {
     const usePath = pathOverride || this.path;
 
-    // Format payload based on type
     let formattedPayload: any;
     if (Array.isArray(payload)) {
       formattedPayload = payload;
@@ -83,7 +114,6 @@ export class MPCSigner {
       formattedPayload = Buffer.from(hexString, "hex").toJSON().data;
     }
 
-    // Prepare contract call arguments
     const args = this.isProxyCall
       ? {
           rlp_payload: Buffer.from(formattedPayload).toString("hex"),
@@ -98,7 +128,6 @@ export class MPCSigner {
           },
         };
 
-    // Set attached deposit based on proxy mode
     const attachedDeposit = this.isProxyCall
       ? utils.format.parseNearAmount("1")
       : utils.format.parseNearAmount("0.2");
@@ -163,7 +192,6 @@ export class MPCSigner {
       if (!this.jsonOutput) {
         console.error("MPC signing error details:", error);
       }
-      // Throw a cleaner error message for JSON output
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new Error(`MPC signing failed: ${errorMessage}`);

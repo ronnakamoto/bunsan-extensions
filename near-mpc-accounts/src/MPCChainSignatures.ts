@@ -11,6 +11,10 @@ import {
   NEAR_ACCOUNT_ID,
 } from "./config";
 
+export interface DeployContractOptions {
+  waitForConfirmation?: boolean;
+}
+
 export class MPCChainSignatures {
   private mpcSigner: MPCSigner;
   private transactionSigner: TransactionSigner;
@@ -22,10 +26,6 @@ export class MPCChainSignatures {
     this.jsonOutput = jsonOutput;
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH, jsonOutput);
     this.transactionSigner = new TransactionSigner(this.mpcSigner, jsonOutput);
-    this.contractDeployer = new ContractDeployer(
-      this.transactionSigner,
-      jsonOutput,
-    );
   }
 
   private log(...args: any[]) {
@@ -80,7 +80,6 @@ export class MPCChainSignatures {
         }
       }
 
-      // Exit the process after successful address generation
       process.exitCode = 0;
       setTimeout(() => process.exit(0), 1000);
 
@@ -100,7 +99,6 @@ export class MPCChainSignatures {
         console.error("\n❌ Error generating address:", errorMessage);
       }
 
-      // Exit with error code
       process.exitCode = 1;
       setTimeout(() => process.exit(1), 1000);
 
@@ -147,7 +145,6 @@ export class MPCChainSignatures {
           this.log("v:", result.v);
         }
 
-        // Exit the process after successful signing
         process.exitCode = 0;
         setTimeout(() => process.exit(0), 1000);
 
@@ -170,7 +167,6 @@ export class MPCChainSignatures {
         console.error("\n❌ Error signing payload:", errorMessage);
       }
 
-      // Exit with error code
       process.exitCode = 1;
       setTimeout(() => process.exit(1), 1000);
 
@@ -183,11 +179,19 @@ export class MPCChainSignatures {
     bytecodePathOrHex: string,
     abiPathOrJSON: string,
     fromAddress: string,
+    options: DeployContractOptions = {},
     constructorArgs: any[] = [],
   ): Promise<{ contractAddress: string; transactionHash: string }> {
     if (!this.initialized) {
       await this.initialize();
     }
+
+    // Create ContractDeployer instance with current options
+    this.contractDeployer = new ContractDeployer(
+      this.transactionSigner,
+      this.jsonOutput,
+      options.waitForConfirmation ?? true, // default to true if not specified
+    );
 
     if (!fromAddress || !isAddress(fromAddress)) {
       throw new Error(`Invalid address format: ${fromAddress}`);
