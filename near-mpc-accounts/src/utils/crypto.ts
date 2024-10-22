@@ -5,7 +5,7 @@ import hash from "hash.js";
 import bs58check from "bs58check";
 import { bech32 } from "bech32";
 import { sha3_256 } from "js-sha3";
-import { createHash } from "crypto";
+import { createHash, subtle } from "crypto";
 import { ethers } from "ethers";
 
 export function najPublicKeyStrToUncompressedHexPoint(
@@ -67,10 +67,7 @@ export async function uncompressedHexPointToBtcAddress(
   networkByte: Buffer,
 ): Promise<string> {
   const publicKeyBytes = Uint8Array.from(Buffer.from(publicKeyHex, "hex"));
-  const sha256HashOutput = await crypto.subtle.digest(
-    "SHA-256",
-    publicKeyBytes,
-  );
+  const sha256HashOutput = await subtle.digest("SHA-256", publicKeyBytes);
   const ripemd160 = hash
     .ripemd160()
     .update(Buffer.from(sha256HashOutput))
