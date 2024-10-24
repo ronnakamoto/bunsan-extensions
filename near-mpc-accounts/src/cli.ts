@@ -1,10 +1,25 @@
-#!/usr/bin/env node
-
 import { program } from "commander";
 import chalk from "chalk";
 import { MPCChainSignatures } from "./MPCChainSignatures";
 
-function logNonJsonOutput(app) {
+interface JsonOutput {
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}
+
+interface SignatureResponse {
+  r: string;
+  s: string;
+  v: number;
+}
+
+interface DeploymentResult {
+  contractAddress: string;
+  transactionHash: string;
+}
+
+function logNonJsonOutput(app: MPCChainSignatures): void {
   console.log(chalk.white.bold("Welcome to NEAR MPC Accounts"));
   console.log(
     chalk.gray(
@@ -25,7 +40,31 @@ function logNonJsonOutput(app) {
   console.log();
 }
 
-async function main() {
+function outputJson(data: JsonOutput): void {
+  console.log(JSON.stringify(data));
+  process.exit(data.success ? 0 : 1);
+}
+
+function handleError(error: Error | unknown, isJson: boolean): never {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  if (isJson) {
+    outputJson({
+      success: false,
+      error: errorMessage,
+    });
+  } else {
+    console.error(chalk.red("\n❌ Error:"), errorMessage);
+    process.exit(1);
+  }
+  throw error; // This will never be reached
+}
+
+async function main(): Promise<void> {
+  // Remove existing handlers to prevent duplicates
+  process.removeAllListeners("uncaughtException");
+  process.removeAllListeners("unhandledRejection");
+
   program
     .version("1.0.0")
     .description(
@@ -40,9 +79,8 @@ async function main() {
       "Specify the blockchain (e.g., ethereum, bitcoin)",
     )
     .option("--json", "Output the result as JSON")
-    .action(async (options) => {
+    .action(async (options: { chain: string; json?: boolean }) => {
       const app = new MPCChainSignatures(options.json);
-      await app.initialize();
 
       try {
         if (!options.json) {
@@ -53,21 +91,20 @@ async function main() {
         const address = await app.generateAddress(options.chain);
 
         if (options.json) {
-          console.log(JSON.stringify({ address }));
+          outputJson({
+            success: true,
+            data: { address },
+          });
         } else {
           console.log(chalk.green("\n✅ Address generated successfully!"));
           console.log(
             chalk.white("\n🔑 Your new address:"),
             chalk.yellow(address),
           );
+          process.exit(0);
         }
       } catch (error) {
-        if (options.json) {
-          console.log(JSON.stringify({ error: error.message }));
-        } else {
-          console.error(chalk.red("\n❌ Error generating address:"), error);
-        }
-        process.exit(1);
+        handleError(error, Boolean(options.json));
       }
     });
 
@@ -79,9 +116,8 @@ async function main() {
       "Specify the payload to sign (in hexadecimal)",
     )
     .option("--json", "Output the result as JSON")
-    .action(async (options) => {
+    .action(async (options: { payload: string; json?: boolean }) => {
       const app = new MPCChainSignatures(options.json);
-      await app.initialize();
 
       try {
         if (!options.json) {
@@ -91,30 +127,83 @@ async function main() {
 
         const signature = await app.signPayload(options.payload);
 
+        if (!signature) {
+          throw new Error("Failed to sign payload");
+        }
+
         if (options.json) {
-          console.log(JSON.stringify(signature));
+          outputJson({
+            success: true,
+            data: {
+              signature: {
+                r: signature.r,
+                s: signature.s,
+                v: signature.v,
+              },
+            },
+          });
         } else {
-          if (signature) {
-            console.log(chalk.green("\n✅ Payload signed successfully!"));
-            console.log(chalk.white("\n📝 Signature details:"));
-            console.log(chalk.yellow("  r:"), signature.r);
-            console.log(chalk.yellow("  s:"), signature.s);
-            console.log(chalk.yellow("  v:"), signature.v);
-          } else {
-            console.log(chalk.red("\n❌ Failed to sign payload"));
-          }
+          console.log(chalk.green("\n✅ Payload signed successfully!"));
+          console.log(chalk.white("\n📝 Signature details:"));
+          console.log(chalk.yellow("  r:"), signature.r);
+          console.log(chalk.yellow("  s:"), signature.s);
+          console.log(chalk.yellow("  v:"), signature.v);
+          process.exit(0);
         }
       } catch (error) {
-        if (options.json) {
-          console.log(JSON.stringify({ error: error.message }));
-        } else {
-          console.error(chalk.red("\n❌ Error signing payload:"), error);
-        }
+        handleError(error, Boolean(options.json));
+      }
+    });
+
+  program
+    .command("deploy-contract")
+    .description("Deploy a smart contract")
+    .requiredOption("--chain <chain>", "Chain to deploy to")
+    .requiredOption("--from <address>", "Address to deploy from")
+    .requiredOption(
+      "--bytecode <path>",
+      "Path to contract bytecode or hex string",
+    )
+    .requiredOption("--abi <path>", "Path to contract ABI or JSON string")
+    .option("--json", "Output in JSON format")
+    .option("--no-confirmation", "Do not wait for transaction confirmation")
+    .option("--constructor-args [args...]", "Constructor arguments")
+    .action(async (options) => {
+      try {
+        const mpc = new MPCChainSignatures(options.json || false);
+
+        const result = await mpc.deployContract(
+          options.chain,
+          options.bytecode,
+          options.abi,
+          options.from,
+          { waitForConfirmation: options.confirmation !== false },
+          options.constructorArgs || [],
+        );
+
+        // The result handling is now managed by the ContractDeployer class
+      } catch (error) {
+        // Error handling is now managed by the ContractDeployer class
         process.exit(1);
       }
     });
 
-  program.parse(process.argv);
+  // Single handlers for uncaught errors
+  process.on("uncaughtException", (error: Error) => {
+    handleError(error, process.argv.includes("--json"));
+  });
+
+  process.on("unhandledRejection", (reason: unknown) => {
+    handleError(
+      reason instanceof Error ? reason : new Error(String(reason)),
+      process.argv.includes("--json"),
+    );
+  });
+
+  await program.parseAsync(process.argv);
 }
 
-main().catch(console.error);
+// Start the program
+void main().catch((error: unknown) => {
+  handleError(error, process.argv.includes("--json"));
+});
