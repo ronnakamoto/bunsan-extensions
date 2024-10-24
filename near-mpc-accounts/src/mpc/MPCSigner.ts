@@ -10,8 +10,16 @@ import {
 } from "../config";
 import { KeyPairString } from "near-api-js/lib/utils/key_pair";
 import { Console } from "console";
+import { Writable } from "stream";
 
 const { Near, Account, keyStores, KeyPair, utils } = nearAPI;
+
+// Create a null output stream
+const nullOutputStream = new Writable({
+  write(chunk, encoding, callback) {
+    callback();
+  },
+});
 
 export class MPCSigner {
   private near!: nearAPI.Near;
@@ -19,7 +27,9 @@ export class MPCSigner {
   private isProxyCall: boolean;
   private accountId: string;
   private contractId: string;
-  private rpcLogger: Console;
+  private nullConsole: Console;
+  private standardConsole: Console;
+  private originalConsoleLog: typeof console.log;
 
   constructor(
     mpcContractId: string,
@@ -31,17 +41,38 @@ export class MPCSigner {
       NEAR_PROXY_ACCOUNT === "true" ? NEAR_PROXY_ACCOUNT_ID! : NEAR_ACCOUNT_ID;
     this.contractId = this.isProxyCall ? NEAR_PROXY_ACCOUNT_ID! : mpcContractId;
 
-    // Create a custom logger that only logs when not in JSON mode
-    this.rpcLogger = new Console({
+    // Create consoles for different output modes
+    this.nullConsole = new Console({
+      stdout: nullOutputStream,
+      stderr: nullOutputStream,
+    });
+    this.standardConsole = new Console({
       stdout: process.stdout,
       stderr: process.stderr,
-      ignoreErrors: true,
     });
+    this.originalConsoleLog = console.log;
+  }
+
+  private suppressLogs() {
+    if (this.jsonOutput) {
+      console.log = (...args) => {
+        const msg = args.join(" ");
+        if (msg.includes("{") && msg.includes("}")) {
+          this.originalConsoleLog.apply(console, args);
+        }
+      };
+    }
+  }
+
+  private restoreLogs() {
+    if (this.jsonOutput) {
+      console.log = this.originalConsoleLog;
+    }
   }
 
   private log(...args: any[]) {
     if (!this.jsonOutput) {
-      console.log(...args);
+      this.standardConsole.log(...args);
     }
   }
 
@@ -57,46 +88,58 @@ export class MPCSigner {
       throw new Error("Private key is undefined");
     }
 
-    const keyStore = new keyStores.InMemoryKeyStore();
-    await keyStore.setKey(
-      "testnet",
-      this.accountId,
-      KeyPair.fromString(privateKey as KeyPairString) as nearAPI.KeyPair,
-    );
+    this.suppressLogs();
 
-    const config = {
-      networkId: "testnet",
-      keyStore,
-      nodeUrl: "https://rpc.testnet.near.org",
-      walletUrl: "https://testnet.mynearwallet.com/",
-      helperUrl: "https://helper.testnet.near.org",
-      explorerUrl: "https://testnet.nearblocks.io",
-      // Add logger configuration to suppress logs
-      logger: this.jsonOutput
-        ? {
-            log: () => {},
-            warn: () => {},
-            error: () => {},
-          }
-        : this.rpcLogger,
-    };
+    try {
+      const keyStore = new keyStores.InMemoryKeyStore();
+      await keyStore.setKey(
+        "testnet",
+        this.accountId,
+        KeyPair.fromString(privateKey as KeyPairString) as nearAPI.KeyPair,
+      );
 
-    this.near = new Near(config);
-    this.account = new Account(this.near.connection, this.accountId);
-
-    // Override the default console.log for RPC calls if in JSON mode
-    if (this.jsonOutput) {
-      this.account.connection.provider.sendJsonRpc = async (...args) => {
-        try {
-          // @ts-ignore - Accessing private property
-          return await this.account.connection.provider.__proto__.sendJsonRpc.apply(
-            this.account.connection.provider,
-            args,
-          );
-        } catch (error) {
-          throw error;
-        }
+      const config = {
+        networkId: "testnet",
+        keyStore,
+        nodeUrl: "https://rpc.testnet.near.org",
+        walletUrl: "https://testnet.mynearwallet.com/",
+        helperUrl: "https://helper.testnet.near.org",
+        explorerUrl: "https://testnet.nearblocks.io",
+        logger: this.jsonOutput
+          ? {
+              log: () => {},
+              warn: () => {},
+              error: () => {},
+              verbose: () => {},
+              debug: () => {},
+              trace: () => {},
+              info: () => {},
+            }
+          : {
+              log: (...args: any[]) => this.log(...args),
+              warn: (...args: any[]) => this.log(...args),
+              error: (...args: any[]) => this.log(...args),
+              verbose: (...args: any[]) => this.log(...args),
+              debug: (...args: any[]) => this.log(...args),
+              trace: (...args: any[]) => this.log(...args),
+              info: (...args: any[]) => this.log(...args),
+            },
       };
+
+      this.near = new Near(config);
+      this.account = new Account(this.near.connection, this.accountId);
+
+      // Override JSON-RPC logging
+      if (this.jsonOutput) {
+        const provider = this.account.connection.provider;
+        const originalSendJsonRpc = provider.sendJsonRpc.bind(provider);
+        provider.sendJsonRpc = async (...args) => {
+          return originalSendJsonRpc(...args);
+        };
+      }
+    } catch (error) {
+      this.restoreLogs();
+      throw error;
     }
   }
 
@@ -104,46 +147,48 @@ export class MPCSigner {
     payload: number[] | string,
     pathOverride?: string,
   ): Promise<{ r: Buffer; s: Buffer; v: number } | undefined> {
-    const usePath = pathOverride || this.path;
-
-    let formattedPayload: any;
-    if (Array.isArray(payload)) {
-      formattedPayload = payload;
-    } else if (typeof payload === "string") {
-      const hexString = payload.startsWith("0x") ? payload.slice(2) : payload;
-      formattedPayload = Buffer.from(hexString, "hex").toJSON().data;
-    }
-
-    const args = this.isProxyCall
-      ? {
-          rlp_payload: Buffer.from(formattedPayload).toString("hex"),
-          path: usePath,
-          key_version: 0,
-        }
-      : {
-          request: {
-            payload: formattedPayload,
-            path: usePath,
-            key_version: 0,
-          },
-        };
-
-    const attachedDeposit = this.isProxyCall
-      ? utils.format.parseNearAmount("1")
-      : utils.format.parseNearAmount("0.2");
-
-    this.log(
-      "sign payload",
-      formattedPayload.length > 200
-        ? `[${formattedPayload.length} bytes]`
-        : formattedPayload,
-    );
-    this.log("with path", usePath);
-    this.log("using contract:", this.contractId);
-    this.log("this may take approx. 30 seconds to complete");
-    this.log("argument to sign:", args);
+    this.suppressLogs();
 
     try {
+      const usePath = pathOverride || this.path;
+
+      let formattedPayload: any;
+      if (Array.isArray(payload)) {
+        formattedPayload = payload;
+      } else if (typeof payload === "string") {
+        const hexString = payload.startsWith("0x") ? payload.slice(2) : payload;
+        formattedPayload = Buffer.from(hexString, "hex").toJSON().data;
+      }
+
+      const args = this.isProxyCall
+        ? {
+            rlp_payload: Buffer.from(formattedPayload).toString("hex"),
+            path: usePath,
+            key_version: 0,
+          }
+        : {
+            request: {
+              payload: formattedPayload,
+              path: usePath,
+              key_version: 0,
+            },
+          };
+
+      const attachedDeposit = this.isProxyCall
+        ? utils.format.parseNearAmount("1")
+        : utils.format.parseNearAmount("0.2");
+
+      this.log(
+        "sign payload",
+        formattedPayload.length > 200
+          ? `[${formattedPayload.length} bytes]`
+          : formattedPayload,
+      );
+      this.log("with path", usePath);
+      this.log("using contract:", this.contractId);
+      this.log("this may take approx. 30 seconds to complete");
+      this.log("argument to sign:", args);
+
       const res = await this.account.functionCall({
         contractId: this.contractId,
         methodName: "sign",
@@ -195,6 +240,8 @@ export class MPCSigner {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new Error(`MPC signing failed: ${errorMessage}`);
+    } finally {
+      this.restoreLogs();
     }
   }
 

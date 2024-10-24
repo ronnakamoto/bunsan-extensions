@@ -22711,7 +22711,7 @@ var require_node = __commonJS({
 var require_stream_writable = __commonJS({
   "node_modules/readable-stream/lib/_stream_writable.js"(exports2, module2) {
     "use strict";
-    module2.exports = Writable;
+    module2.exports = Writable2;
     function CorkedRequest(state) {
       var _this = this;
       this.next = null;
@@ -22721,7 +22721,7 @@ var require_stream_writable = __commonJS({
       };
     }
     var Duplex;
-    Writable.WritableState = WritableState;
+    Writable2.WritableState = WritableState;
     var internalUtil = {
       deprecate: require_node()
     };
@@ -22748,7 +22748,7 @@ var require_stream_writable = __commonJS({
     var ERR_STREAM_WRITE_AFTER_END = _require$codes.ERR_STREAM_WRITE_AFTER_END;
     var ERR_UNKNOWN_ENCODING = _require$codes.ERR_UNKNOWN_ENCODING;
     var errorOrDestroy = destroyImpl.errorOrDestroy;
-    require_inherits()(Writable, Stream);
+    require_inherits()(Writable2, Stream);
     function nop() {
     }
     function WritableState(options, stream, isDuplex) {
@@ -22809,10 +22809,10 @@ var require_stream_writable = __commonJS({
     var realHasInstance;
     if (typeof Symbol === "function" && Symbol.hasInstance && typeof Function.prototype[Symbol.hasInstance] === "function") {
       realHasInstance = Function.prototype[Symbol.hasInstance];
-      Object.defineProperty(Writable, Symbol.hasInstance, {
+      Object.defineProperty(Writable2, Symbol.hasInstance, {
         value: function value(object) {
           if (realHasInstance.call(this, object)) return true;
-          if (this !== Writable) return false;
+          if (this !== Writable2) return false;
           return object && object._writableState instanceof WritableState;
         }
       });
@@ -22821,10 +22821,10 @@ var require_stream_writable = __commonJS({
         return object instanceof this;
       };
     }
-    function Writable(options) {
+    function Writable2(options) {
       Duplex = Duplex || require_stream_duplex();
       var isDuplex = this instanceof Duplex;
-      if (!isDuplex && !realHasInstance.call(Writable, this)) return new Writable(options);
+      if (!isDuplex && !realHasInstance.call(Writable2, this)) return new Writable2(options);
       this._writableState = new WritableState(options, this, isDuplex);
       this.writable = true;
       if (options) {
@@ -22835,7 +22835,7 @@ var require_stream_writable = __commonJS({
       }
       Stream.call(this);
     }
-    Writable.prototype.pipe = function() {
+    Writable2.prototype.pipe = function() {
       errorOrDestroy(this, new ERR_STREAM_CANNOT_PIPE());
     };
     function writeAfterEnd(stream, cb) {
@@ -22857,7 +22857,7 @@ var require_stream_writable = __commonJS({
       }
       return true;
     }
-    Writable.prototype.write = function(chunk, encoding, cb) {
+    Writable2.prototype.write = function(chunk, encoding, cb) {
       var state = this._writableState;
       var ret = false;
       var isBuf = !state.objectMode && _isUint8Array(chunk);
@@ -22878,23 +22878,23 @@ var require_stream_writable = __commonJS({
       }
       return ret;
     };
-    Writable.prototype.cork = function() {
+    Writable2.prototype.cork = function() {
       this._writableState.corked++;
     };
-    Writable.prototype.uncork = function() {
+    Writable2.prototype.uncork = function() {
       var state = this._writableState;
       if (state.corked) {
         state.corked--;
         if (!state.writing && !state.corked && !state.bufferProcessing && state.bufferedRequest) clearBuffer(this, state);
       }
     };
-    Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
+    Writable2.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
       if (typeof encoding === "string") encoding = encoding.toLowerCase();
       if (!(["hex", "utf8", "utf-8", "ascii", "binary", "base64", "ucs2", "ucs-2", "utf16le", "utf-16le", "raw"].indexOf((encoding + "").toLowerCase()) > -1)) throw new ERR_UNKNOWN_ENCODING(encoding);
       this._writableState.defaultEncoding = encoding;
       return this;
     };
-    Object.defineProperty(Writable.prototype, "writableBuffer", {
+    Object.defineProperty(Writable2.prototype, "writableBuffer", {
       // making it explicit this property is not enumerable
       // because otherwise some prototype manipulation in
       // userland will fail
@@ -22909,7 +22909,7 @@ var require_stream_writable = __commonJS({
       }
       return chunk;
     }
-    Object.defineProperty(Writable.prototype, "writableHighWaterMark", {
+    Object.defineProperty(Writable2.prototype, "writableHighWaterMark", {
       // making it explicit this property is not enumerable
       // because otherwise some prototype manipulation in
       // userland will fail
@@ -23057,11 +23057,11 @@ var require_stream_writable = __commonJS({
       state.bufferedRequest = entry;
       state.bufferProcessing = false;
     }
-    Writable.prototype._write = function(chunk, encoding, cb) {
+    Writable2.prototype._write = function(chunk, encoding, cb) {
       cb(new ERR_METHOD_NOT_IMPLEMENTED("_write()"));
     };
-    Writable.prototype._writev = null;
-    Writable.prototype.end = function(chunk, encoding, cb) {
+    Writable2.prototype._writev = null;
+    Writable2.prototype.end = function(chunk, encoding, cb) {
       var state = this._writableState;
       if (typeof chunk === "function") {
         cb = chunk;
@@ -23079,7 +23079,7 @@ var require_stream_writable = __commonJS({
       if (!state.ending) endWritable(this, state, cb);
       return this;
     };
-    Object.defineProperty(Writable.prototype, "writableLength", {
+    Object.defineProperty(Writable2.prototype, "writableLength", {
       // making it explicit this property is not enumerable
       // because otherwise some prototype manipulation in
       // userland will fail
@@ -23152,7 +23152,7 @@ var require_stream_writable = __commonJS({
       }
       state.corkedRequestsFree.next = corkReq;
     }
-    Object.defineProperty(Writable.prototype, "destroyed", {
+    Object.defineProperty(Writable2.prototype, "destroyed", {
       // making it explicit this property is not enumerable
       // because otherwise some prototype manipulation in
       // userland will fail
@@ -23170,9 +23170,9 @@ var require_stream_writable = __commonJS({
         this._writableState.destroyed = value;
       }
     });
-    Writable.prototype.destroy = destroyImpl.destroy;
-    Writable.prototype._undestroy = destroyImpl.undestroy;
-    Writable.prototype._destroy = function(err, cb) {
+    Writable2.prototype.destroy = destroyImpl.destroy;
+    Writable2.prototype._undestroy = destroyImpl.undestroy;
+    Writable2.prototype._destroy = function(err, cb) {
       cb(err);
     };
   }
@@ -23189,13 +23189,13 @@ var require_stream_duplex = __commonJS({
     };
     module2.exports = Duplex;
     var Readable = require_stream_readable();
-    var Writable = require_stream_writable();
+    var Writable2 = require_stream_writable();
     require_inherits()(Duplex, Readable);
     {
-      keys = objectKeys(Writable.prototype);
+      keys = objectKeys(Writable2.prototype);
       for (v = 0; v < keys.length; v++) {
         method = keys[v];
-        if (!Duplex.prototype[method]) Duplex.prototype[method] = Writable.prototype[method];
+        if (!Duplex.prototype[method]) Duplex.prototype[method] = Writable2.prototype[method];
       }
     }
     var keys;
@@ -23204,7 +23204,7 @@ var require_stream_duplex = __commonJS({
     function Duplex(options) {
       if (!(this instanceof Duplex)) return new Duplex(options);
       Readable.call(this, options);
-      Writable.call(this, options);
+      Writable2.call(this, options);
       this.allowHalfOpen = true;
       if (options) {
         if (options.readable === false) this.readable = false;
@@ -53166,7 +53166,7 @@ var require_validation = __commonJS({
 var require_receiver = __commonJS({
   "node_modules/ws/lib/receiver.js"(exports2, module2) {
     "use strict";
-    var { Writable } = require("stream");
+    var { Writable: Writable2 } = require("stream");
     var PerMessageDeflate = require_permessage_deflate();
     var {
       BINARY_TYPES,
@@ -53182,7 +53182,7 @@ var require_receiver = __commonJS({
     var GET_MASK = 3;
     var GET_DATA = 4;
     var INFLATING = 5;
-    var Receiver = class extends Writable {
+    var Receiver = class extends Writable2 {
       /**
        * Creates a Receiver instance.
        *
@@ -80347,7 +80347,13 @@ if (!NEAR_ACCOUNT_ID || !NEAR_PRIVATE_KEY || !MPC_PATH || !MPC_CONTRACT_ID || !M
 
 // src/mpc/MPCSigner.ts
 var import_console = require("console");
+var import_stream = require("stream");
 var { Near, Account, keyStores, KeyPair, utils } = nearAPI;
+var nullOutputStream = new import_stream.Writable({
+  write(chunk, encoding, callback) {
+    callback();
+  }
+});
 var MPCSigner = class {
   constructor(mpcContractId, path, jsonOutput = false) {
     this.path = path;
@@ -80355,15 +80361,34 @@ var MPCSigner = class {
     this.isProxyCall = NEAR_PROXY_CONTRACT === "true";
     this.accountId = NEAR_PROXY_ACCOUNT === "true" ? NEAR_PROXY_ACCOUNT_ID : NEAR_ACCOUNT_ID;
     this.contractId = this.isProxyCall ? NEAR_PROXY_ACCOUNT_ID : mpcContractId;
-    this.rpcLogger = new import_console.Console({
-      stdout: process.stdout,
-      stderr: process.stderr,
-      ignoreErrors: true
+    this.nullConsole = new import_console.Console({
+      stdout: nullOutputStream,
+      stderr: nullOutputStream
     });
+    this.standardConsole = new import_console.Console({
+      stdout: process.stdout,
+      stderr: process.stderr
+    });
+    this.originalConsoleLog = console.log;
+  }
+  suppressLogs() {
+    if (this.jsonOutput) {
+      console.log = (...args) => {
+        const msg = args.join(" ");
+        if (msg.includes("{") && msg.includes("}")) {
+          this.originalConsoleLog.apply(console, args);
+        }
+      };
+    }
+  }
+  restoreLogs() {
+    if (this.jsonOutput) {
+      console.log = this.originalConsoleLog;
+    }
   }
   log(...args) {
     if (!this.jsonOutput) {
-      console.log(...args);
+      this.standardConsole.log(...args);
     }
   }
   async initialize() {
@@ -80374,74 +80399,91 @@ var MPCSigner = class {
     if (!privateKey) {
       throw new Error("Private key is undefined");
     }
-    const keyStore = new keyStores.InMemoryKeyStore();
-    await keyStore.setKey(
-      "testnet",
-      this.accountId,
-      KeyPair.fromString(privateKey)
-    );
-    const config = {
-      networkId: "testnet",
-      keyStore,
-      nodeUrl: "https://rpc.testnet.near.org",
-      walletUrl: "https://testnet.mynearwallet.com/",
-      helperUrl: "https://helper.testnet.near.org",
-      explorerUrl: "https://testnet.nearblocks.io",
-      // Add logger configuration to suppress logs
-      logger: this.jsonOutput ? {
-        log: () => {
-        },
-        warn: () => {
-        },
-        error: () => {
-        }
-      } : this.rpcLogger
-    };
-    this.near = new Near(config);
-    this.account = new Account(this.near.connection, this.accountId);
-    if (this.jsonOutput) {
-      this.account.connection.provider.sendJsonRpc = async (...args) => {
-        try {
-          return await this.account.connection.provider.__proto__.sendJsonRpc.apply(
-            this.account.connection.provider,
-            args
-          );
-        } catch (error) {
-          throw error;
+    this.suppressLogs();
+    try {
+      const keyStore = new keyStores.InMemoryKeyStore();
+      await keyStore.setKey(
+        "testnet",
+        this.accountId,
+        KeyPair.fromString(privateKey)
+      );
+      const config = {
+        networkId: "testnet",
+        keyStore,
+        nodeUrl: "https://rpc.testnet.near.org",
+        walletUrl: "https://testnet.mynearwallet.com/",
+        helperUrl: "https://helper.testnet.near.org",
+        explorerUrl: "https://testnet.nearblocks.io",
+        logger: this.jsonOutput ? {
+          log: () => {
+          },
+          warn: () => {
+          },
+          error: () => {
+          },
+          verbose: () => {
+          },
+          debug: () => {
+          },
+          trace: () => {
+          },
+          info: () => {
+          }
+        } : {
+          log: (...args) => this.log(...args),
+          warn: (...args) => this.log(...args),
+          error: (...args) => this.log(...args),
+          verbose: (...args) => this.log(...args),
+          debug: (...args) => this.log(...args),
+          trace: (...args) => this.log(...args),
+          info: (...args) => this.log(...args)
         }
       };
+      this.near = new Near(config);
+      this.account = new Account(this.near.connection, this.accountId);
+      if (this.jsonOutput) {
+        const provider = this.account.connection.provider;
+        const originalSendJsonRpc = provider.sendJsonRpc.bind(provider);
+        provider.sendJsonRpc = async (...args) => {
+          return originalSendJsonRpc(...args);
+        };
+      }
+    } catch (error) {
+      this.restoreLogs();
+      throw error;
     }
   }
   async sign(payload, pathOverride) {
-    const usePath = pathOverride || this.path;
-    let formattedPayload;
-    if (Array.isArray(payload)) {
-      formattedPayload = payload;
-    } else if (typeof payload === "string") {
-      const hexString = payload.startsWith("0x") ? payload.slice(2) : payload;
-      formattedPayload = Buffer.from(hexString, "hex").toJSON().data;
-    }
-    const args = this.isProxyCall ? {
-      rlp_payload: Buffer.from(formattedPayload).toString("hex"),
-      path: usePath,
-      key_version: 0
-    } : {
-      request: {
-        payload: formattedPayload,
+    this.suppressLogs();
+    try {
+      const usePath = pathOverride || this.path;
+      let formattedPayload;
+      if (Array.isArray(payload)) {
+        formattedPayload = payload;
+      } else if (typeof payload === "string") {
+        const hexString = payload.startsWith("0x") ? payload.slice(2) : payload;
+        formattedPayload = Buffer.from(hexString, "hex").toJSON().data;
+      }
+      const args = this.isProxyCall ? {
+        rlp_payload: Buffer.from(formattedPayload).toString("hex"),
         path: usePath,
         key_version: 0
-      }
-    };
-    const attachedDeposit = this.isProxyCall ? utils.format.parseNearAmount("1") : utils.format.parseNearAmount("0.2");
-    this.log(
-      "sign payload",
-      formattedPayload.length > 200 ? `[${formattedPayload.length} bytes]` : formattedPayload
-    );
-    this.log("with path", usePath);
-    this.log("using contract:", this.contractId);
-    this.log("this may take approx. 30 seconds to complete");
-    this.log("argument to sign:", args);
-    try {
+      } : {
+        request: {
+          payload: formattedPayload,
+          path: usePath,
+          key_version: 0
+        }
+      };
+      const attachedDeposit = this.isProxyCall ? utils.format.parseNearAmount("1") : utils.format.parseNearAmount("0.2");
+      this.log(
+        "sign payload",
+        formattedPayload.length > 200 ? `[${formattedPayload.length} bytes]` : formattedPayload
+      );
+      this.log("with path", usePath);
+      this.log("using contract:", this.contractId);
+      this.log("this may take approx. 30 seconds to complete");
+      this.log("argument to sign:", args);
       const res = await this.account.functionCall({
         contractId: this.contractId,
         methodName: "sign",
@@ -80481,6 +80523,8 @@ var MPCSigner = class {
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`MPC signing failed: ${errorMessage}`);
+    } finally {
+      this.restoreLogs();
     }
   }
   getAccountId() {
