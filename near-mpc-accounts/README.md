@@ -115,6 +115,35 @@ Content-Type: application/json
 
 Replace `<payload>` with the hexadecimal payload you want to sign.
 
+### Deploy Contract
+Deploy a contract to a smart contract supported chain like Aurora, Ethereum, Sepolia.
+
+CLI:
+```bash
+bunsan run-extension near-mpc-accounts deploy-contract \
+  --chain <chain> \
+  --from <address> \
+  --bytecode <bytecode_path_or_hex> \
+  --abi <abi_path_or_json> \
+  --json
+```
+
+HTTP:
+```
+POST /extensions/near-mpc-accounts/deploy-contract
+Content-Type: application/json
+
+{
+  "chain": "ethereum",
+  "from": "0x...",
+  "bytecode": "0x...",
+  "abi": "[...]",
+  "constructorArgs": [],
+  "waitForConfirmation": true,
+  "json": true
+}
+```
+
 ## Credits
 
 Inspired by - [Chainsig Script](https://github.com/near-examples/chainsig-script)

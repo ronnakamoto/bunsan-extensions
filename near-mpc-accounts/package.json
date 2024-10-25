@@ -56,6 +56,65 @@
         ]
       },
       {
+        "path": "/deploy-contract",
+        "method": "POST",
+        "command": "deploy-contract",
+        "description": "Deploy a smart contract using NEAR MPC",
+        "parameters": [
+          {
+            "name": "chain",
+            "type": "string",
+            "required": true,
+            "description": "Chain to deploy to (e.g., ethereum, sepolia)",
+            "source": "body"
+          },
+          {
+            "name": "from",
+            "type": "string",
+            "required": true,
+            "description": "Address to deploy from",
+            "source": "body"
+          },
+          {
+            "name": "bytecode",
+            "type": "string",
+            "required": true,
+            "description": "Contract bytecode (hex string) or path to .bin file",
+            "source": "body"
+          },
+          {
+            "name": "abi",
+            "type": "string",
+            "required": true,
+            "description": "Contract ABI (JSON string) or path to .json file",
+            "source": "body"
+          },
+          {
+            "name": "constructorArgs",
+            "type": "array",
+            "required": false,
+            "description": "Constructor arguments",
+            "source": "body"
+          },
+          {
+            "name": "waitForConfirmation",
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "description": "Wait for deployment confirmation",
+            "source": "body"
+          },
+          {
+            "name": "json",
+            "type": "boolean",
+            "required": true,
+            "default": true,
+            "description": "Output the result as JSON",
+            "source": "body"
+          }
+        ]
+      },
+      {
         "path": "/help",
         "method": "GET",
         "command": "help",
