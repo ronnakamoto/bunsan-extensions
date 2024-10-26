@@ -80823,12 +80823,6 @@ Generating ${chainType} address...`);
         MPC_PATH
       );
       if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: true,
-            ...result
-          })
-        );
       } else {
         this.log("\n\u2705 Address generated successfully!");
         this.log("\n\u{1F511} Your new address:", result.address);

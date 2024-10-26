@@ -66,12 +66,6 @@ export class MPCChainSignatures {
       );
 
       if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: true,
-            ...result,
-          }),
-        );
       } else {
         this.log("\n✅ Address generated successfully!");
         this.log("\n🔑 Your new address:", result.address);
