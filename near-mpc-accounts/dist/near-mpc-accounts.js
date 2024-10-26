@@ -80687,9 +80687,10 @@ var ContractDeployer = class {
 var import_ethers2 = __toESM(require_lib32());
 var { NEAR_PROXY_CONTRACT: NEAR_PROXY_CONTRACT2 } = process.env;
 var TransactionSigner = class {
-  constructor(mpcSigner, jsonOutput = false) {
+  constructor(mpcSigner, jsonOutput = false, path) {
     this.mpcSigner = mpcSigner;
     this.jsonOutput = jsonOutput;
+    this.path = path;
   }
   log(...args) {
     if (!this.jsonOutput) {
@@ -80726,7 +80727,7 @@ var TransactionSigner = class {
         payload = Array.from(txBytes);
       }
       this.log("Requesting MPC signature...");
-      const sig = await this.mpcSigner.sign(payload);
+      const sig = await this.mpcSigner.sign(payload, this.path);
       if (!sig) {
         throw new Error("No signature returned from MPC");
       }
@@ -80793,6 +80794,9 @@ var MPCChainSignatures = class {
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH, jsonOutput);
     this.transactionSigner = new TransactionSigner(this.mpcSigner, jsonOutput);
   }
+  getPath(chainType, index2) {
+    return index2 !== void 0 ? `${chainType},${index2}` : MPC_PATH;
+  }
   log(...args) {
     if (!this.jsonOutput) {
       console.log(...args);
@@ -80809,7 +80813,7 @@ var MPCChainSignatures = class {
   getContractId() {
     return MPC_CONTRACT_ID;
   }
-  async generateAddress(chainType) {
+  async generateAddress(chainType, options = {}) {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -80817,10 +80821,11 @@ var MPCChainSignatures = class {
       const chain = ChainFactory.createChain(chainType);
       this.log(`
 Generating ${chainType} address...`);
+      const path = options.index !== void 0 ? `${chainType},${options.index}` : MPC_PATH;
       const result = await chain.generateAddress(
         MPC_PUBLIC_KEY,
         NEAR_ACCOUNT_ID,
-        MPC_PATH
+        path
       );
       if (this.jsonOutput) {
       } else {
@@ -80906,6 +80911,12 @@ Generating ${chainType} address...`);
     if (!this.initialized) {
       await this.initialize();
     }
+    const path = this.getPath(chainType, options.index);
+    this.transactionSigner = new TransactionSigner(
+      this.mpcSigner,
+      this.jsonOutput,
+      path
+    );
     this.contractDeployer = new ContractDeployer(
       this.transactionSigner,
       this.jsonOutput,
@@ -81001,7 +81012,7 @@ async function main() {
   program.command("generate-address").description("Generate a blockchain address using MPC").requiredOption(
     "--chain <chain>",
     "Specify the blockchain (e.g., ethereum, bitcoin)"
-  ).option("--json", "Output the result as JSON").action(async (options) => {
+  ).option("-i, --index <number>", "Index for path generation (e.g., 1,2,3)").option("--json", "Output the result as JSON").action(async (options) => {
     const app = new MPCChainSignatures(options.json);
     try {
       if (!options.json) {
@@ -81009,7 +81020,9 @@ async function main() {
         console.log(source_default.cyan(`
 Generating ${options.chain} address...`));
       }
-      const address = await app.generateAddress(options.chain);
+      const address = await app.generateAddress(options.chain, {
+        index: options.index ? parseInt(options.index) : void 0
+      });
       if (options.json) {
         outputJson({
           success: true,
@@ -81064,10 +81077,10 @@ Generating ${options.chain} address...`));
       handleError(error, Boolean(options.json));
     }
   });
-  program.command("deploy-contract").description("Deploy a smart contract").requiredOption("--chain <chain>", "Chain to deploy to").requiredOption("--from <address>", "Address to deploy from").requiredOption(
-    "--bytecode <path>",
-    "Path to contract bytecode or hex string"
-  ).requiredOption("--abi <path>", "Path to contract ABI or JSON string").option("--json", "Output in JSON format").option("--no-confirmation", "Do not wait for transaction confirmation").option("--constructor-args [args...]", "Constructor arguments").action(async (options) => {
+  program.command("deploy-contract").description("Deploy a smart contract").requiredOption("-c, --chain <chain>", "Chain to deploy the contract on").requiredOption(
+    "-b, --bytecode <path>",
+    "Path to bytecode file or hex string"
+  ).requiredOption("-a, --abi <path>", "Path to ABI file or JSON string").requiredOption("-f, --from <address>", "From address").option("-i, --index <number>", "Index for path generation").option("--json", "Output in JSON format").option("--no-confirmation", "Do not wait for transaction confirmation").option("--constructor-args [args...]", "Constructor arguments").action(async (options) => {
     try {
       const mpc = new MPCChainSignatures(options.json || false);
       const result = await mpc.deployContract(
@@ -81075,7 +81088,10 @@ Generating ${options.chain} address...`));
         options.bytecode,
         options.abi,
         options.from,
-        { waitForConfirmation: options.confirmation !== false },
+        {
+          waitForConfirmation: options.confirmation !== false,
+          index: options.index ? parseInt(options.index) : void 0
+        },
         options.constructorArgs || []
       );
     } catch (error) {

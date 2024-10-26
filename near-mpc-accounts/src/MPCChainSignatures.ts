@@ -13,6 +13,7 @@ import {
 
 export interface DeployContractOptions {
   waitForConfirmation?: boolean;
+  index?: number;
 }
 
 export class MPCChainSignatures {
@@ -26,6 +27,10 @@ export class MPCChainSignatures {
     this.jsonOutput = jsonOutput;
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH, jsonOutput);
     this.transactionSigner = new TransactionSigner(this.mpcSigner, jsonOutput);
+  }
+
+  private getPath(chainType: string, index?: number): string {
+    return index !== undefined ? `${chainType},${index}` : MPC_PATH;
   }
 
   private log(...args: any[]) {
@@ -50,6 +55,7 @@ export class MPCChainSignatures {
 
   async generateAddress(
     chainType: string,
+    options: any = {},
   ): Promise<{ address: string; publicKey?: string }> {
     if (!this.initialized) {
       await this.initialize();
@@ -59,10 +65,16 @@ export class MPCChainSignatures {
       const chain = ChainFactory.createChain(chainType);
       this.log(`\nGenerating ${chainType} address...`);
 
+      // Generate dynamic path based on chain type and index
+      const path =
+        options.index !== undefined
+          ? `${chainType},${options.index}`
+          : MPC_PATH;
+
       const result = await chain.generateAddress(
         MPC_PUBLIC_KEY,
         NEAR_ACCOUNT_ID,
-        MPC_PATH,
+        path,
       );
 
       if (this.jsonOutput) {
@@ -179,6 +191,13 @@ export class MPCChainSignatures {
     if (!this.initialized) {
       await this.initialize();
     }
+
+    const path = this.getPath(chainType, options.index);
+    this.transactionSigner = new TransactionSigner(
+      this.mpcSigner,
+      this.jsonOutput,
+      path,
+    );
 
     // Create ContractDeployer instance with current options
     this.contractDeployer = new ContractDeployer(

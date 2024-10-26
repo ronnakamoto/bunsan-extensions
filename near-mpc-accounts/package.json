@@ -25,6 +25,13 @@
             "source": "body"
           },
           {
+            "name": "index",
+            "type": "number",
+            "required": false,
+            "description": "Index for path generation",
+            "source": "body"
+          },
+          {
             "name": "json",
             "type": "boolean",
             "required": true,
@@ -87,6 +94,13 @@
             "type": "string",
             "required": true,
             "description": "Contract ABI (JSON string) or path to .json file",
+            "source": "body"
+          },
+          {
+            "name": "index",
+            "type": "number",
+            "required": false,
+            "description": "Index for path generation",
             "source": "body"
           },
           {
