@@ -10,10 +10,18 @@ import {
   MPC_PUBLIC_KEY,
   NEAR_ACCOUNT_ID,
 } from "./config";
+import { BitcoinChain } from "./chains/BitcoinChain";
 
 export interface DeployContractOptions {
   waitForConfirmation?: boolean;
   index?: number;
+}
+
+export interface BitcoinTransactionRequest {
+  from: string;
+  to: string;
+  amount: number; // in satoshis
+  publicKey: string;
 }
 
 export class MPCChainSignatures {
@@ -253,6 +261,78 @@ export class MPCChainSignatures {
             error: errorMessage,
           }),
         );
+      }
+
+      throw error;
+    }
+  }
+
+  async sendBitcoinTransaction(
+    chainType: string,
+    transaction: BitcoinTransactionRequest,
+  ): Promise<{ txHash: string; explorerUrl: string }> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const chain = ChainFactory.createChain(chainType);
+    if (!(chain instanceof BitcoinChain)) {
+      throw new Error("Chain must be a Bitcoin chain");
+    }
+
+    try {
+      this.log("\nPreparing Bitcoin transaction...");
+      this.log("From:", transaction.from);
+      this.log("To:", transaction.to);
+      this.log("Amount:", transaction.amount, "satoshis");
+
+      // Create a signer function that uses our MPCSigner
+      const signer = async (payload: number[]) => {
+        const signature = await this.mpcSigner.sign(payload);
+        if (!signature) {
+          throw new Error("Failed to get signature from MPC");
+        }
+        return {
+          r: signature.r.toString("hex"),
+          s: signature.s.toString("hex"),
+          v: signature.v,
+        };
+      };
+
+      const txHash = await chain.sendBitcoinTransaction(transaction, signer);
+
+      const result = {
+        txHash,
+        explorerUrl: chain.getExplorerUrl(txHash),
+      };
+
+      if (this.jsonOutput) {
+        console.log(
+          JSON.stringify({
+            success: true,
+            ...result,
+          }),
+        );
+      } else {
+        this.log("\n✅ Transaction sent successfully!");
+        this.log("📝 Transaction Hash:", txHash);
+        this.log("🔍 Explorer URL:", result.explorerUrl);
+      }
+
+      return result;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+
+      if (this.jsonOutput) {
+        console.log(
+          JSON.stringify({
+            success: false,
+            error: errorMessage,
+          }),
+        );
+      } else {
+        console.error("\n❌ Error sending Bitcoin transaction:", errorMessage);
       }
 
       throw error;

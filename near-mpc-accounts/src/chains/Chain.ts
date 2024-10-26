@@ -11,7 +11,7 @@ export interface Chain {
     publicKey: string,
     accountId: string,
     path: string,
-  ): Promise<string>;
+  ): Promise<any>;
   validateAddress(address: string): boolean;
   supportsSmartContracts(): boolean;
   getType(): string;

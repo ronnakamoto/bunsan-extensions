@@ -96,7 +96,7 @@ async function main(): Promise<void> {
         if (options.json) {
           outputJson({
             success: true,
-            data: { address },
+            data: address,
           });
         } else {
           console.log(chalk.green("\n✅ Address generated successfully!"));
@@ -191,6 +191,36 @@ async function main(): Promise<void> {
         // The result handling is now managed by the ContractDeployer class
       } catch (error) {
         // Error handling is now managed by the ContractDeployer class
+        process.exit(1);
+      }
+    });
+
+  program
+    .command("send-bitcoin")
+    .description("Send a Bitcoin transaction")
+    .requiredOption(
+      "-c, --chain <chain>",
+      "Chain to use (bitcoin or bitcoin-testnet)",
+    )
+    .requiredOption("-f, --from <address>", "Sender's address")
+    .requiredOption("-t, --to <address>", "Recipient's address")
+    .requiredOption("-a, --amount <amount>", "Amount in satoshis")
+    .requiredOption("-p, --public-key <key>", "Sender's public key")
+    .option("--json", "Output the result as JSON")
+    .action(async (options) => {
+      try {
+        const mpcChainSignatures = new MPCChainSignatures(options.json);
+
+        await mpcChainSignatures.sendBitcoinTransaction(options.chain, {
+          from: options.from,
+          to: options.to,
+          amount: parseInt(options.amount),
+          publicKey: options.publicKey,
+        });
+      } catch (error) {
+        if (!options.json) {
+          console.error("\n❌ Error:", error.message);
+        }
         process.exit(1);
       }
     });
