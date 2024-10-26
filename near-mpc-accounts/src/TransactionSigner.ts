@@ -8,6 +8,7 @@ export class TransactionSigner {
   constructor(
     private mpcSigner: MPCSigner,
     private jsonOutput: boolean = false,
+    private path?: string,
   ) {}
 
   private log(...args: any[]) {
@@ -60,7 +61,7 @@ export class TransactionSigner {
 
       this.log("Requesting MPC signature...");
 
-      const sig = await this.mpcSigner.sign(payload);
+      const sig = await this.mpcSigner.sign(payload, this.path);
 
       if (!sig) {
         throw new Error("No signature returned from MPC");

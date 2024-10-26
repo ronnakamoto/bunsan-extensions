@@ -78,8 +78,9 @@ async function main(): Promise<void> {
       "--chain <chain>",
       "Specify the blockchain (e.g., ethereum, bitcoin)",
     )
+    .option("-i, --index <number>", "Index for path generation (e.g., 1,2,3)")
     .option("--json", "Output the result as JSON")
-    .action(async (options: { chain: string; json?: boolean }) => {
+    .action(async (options: any) => {
       const app = new MPCChainSignatures(options.json);
 
       try {
@@ -88,12 +89,14 @@ async function main(): Promise<void> {
           console.log(chalk.cyan(`\nGenerating ${options.chain} address...`));
         }
 
-        const address = await app.generateAddress(options.chain);
+        const address = await app.generateAddress(options.chain, {
+          index: options.index ? parseInt(options.index) : undefined,
+        });
 
         if (options.json) {
           outputJson({
             success: true,
-            data: { address },
+            data: address,
           });
         } else {
           console.log(chalk.green("\n✅ Address generated successfully!"));
@@ -158,13 +161,14 @@ async function main(): Promise<void> {
   program
     .command("deploy-contract")
     .description("Deploy a smart contract")
-    .requiredOption("--chain <chain>", "Chain to deploy to")
-    .requiredOption("--from <address>", "Address to deploy from")
+    .requiredOption("-c, --chain <chain>", "Chain to deploy the contract on")
     .requiredOption(
-      "--bytecode <path>",
-      "Path to contract bytecode or hex string",
+      "-b, --bytecode <path>",
+      "Path to bytecode file or hex string",
     )
-    .requiredOption("--abi <path>", "Path to contract ABI or JSON string")
+    .requiredOption("-a, --abi <path>", "Path to ABI file or JSON string")
+    .requiredOption("-f, --from <address>", "From address")
+    .option("-i, --index <number>", "Index for path generation")
     .option("--json", "Output in JSON format")
     .option("--no-confirmation", "Do not wait for transaction confirmation")
     .option("--constructor-args [args...]", "Constructor arguments")
@@ -177,13 +181,46 @@ async function main(): Promise<void> {
           options.bytecode,
           options.abi,
           options.from,
-          { waitForConfirmation: options.confirmation !== false },
+          {
+            waitForConfirmation: options.confirmation !== false,
+            index: options.index ? parseInt(options.index) : undefined,
+          },
           options.constructorArgs || [],
         );
 
         // The result handling is now managed by the ContractDeployer class
       } catch (error) {
         // Error handling is now managed by the ContractDeployer class
+        process.exit(1);
+      }
+    });
+
+  program
+    .command("send-bitcoin")
+    .description("Send a Bitcoin transaction")
+    .requiredOption(
+      "-c, --chain <chain>",
+      "Chain to use (bitcoin or bitcoin-testnet)",
+    )
+    .requiredOption("-f, --from <address>", "Sender's address")
+    .requiredOption("-t, --to <address>", "Recipient's address")
+    .requiredOption("-a, --amount <amount>", "Amount in satoshis")
+    .requiredOption("-p, --public-key <key>", "Sender's public key")
+    .option("--json", "Output the result as JSON")
+    .action(async (options) => {
+      try {
+        const mpcChainSignatures = new MPCChainSignatures(options.json);
+
+        await mpcChainSignatures.sendBitcoinTransaction(options.chain, {
+          from: options.from,
+          to: options.to,
+          amount: parseInt(options.amount),
+          publicKey: options.publicKey,
+        });
+      } catch (error) {
+        if (!options.json) {
+          console.error("\n❌ Error:", error.message);
+        }
         process.exit(1);
       }
     });

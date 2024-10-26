@@ -25,6 +25,13 @@
             "source": "body"
           },
           {
+            "name": "index",
+            "type": "number",
+            "required": false,
+            "description": "Index for path generation",
+            "source": "body"
+          },
+          {
             "name": "json",
             "type": "boolean",
             "required": true,
@@ -90,6 +97,13 @@
             "source": "body"
           },
           {
+            "name": "index",
+            "type": "number",
+            "required": false,
+            "description": "Index for path generation",
+            "source": "body"
+          },
+          {
             "name": "constructorArgs",
             "type": "array",
             "required": false,
@@ -142,6 +156,7 @@
   },
   "dependencies": {
     "bech32": "^2.0.0",
+    "bitcoinjs-lib": "^7.0.0-rc.0",
     "bn.js": "^5.2.1",
     "bs58check": "^4.0.0",
     "chalk": "^5.3.0",

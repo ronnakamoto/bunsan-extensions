@@ -1,9 +1,10 @@
 import { Chain } from "./Chain";
 import { EVMChain } from "./EVMChain";
-import { BitcoinChain } from "./BitcoinChain";
+import { BitcoinChain, BitcoinNetwork } from "./BitcoinChain";
 import { mainnet, sepolia, Chain as ViemChain } from "viem/chains";
 
-interface ChainConfig {
+interface EVMChainConfig {
+  type: "evm";
   name: string;
   chainId: number;
   rpcUrl: string;
@@ -11,8 +12,18 @@ interface ChainConfig {
   viemChain: ViemChain;
 }
 
+interface BitcoinChainConfig {
+  type: "bitcoin";
+  network: BitcoinNetwork;
+  explorerUrl?: string;
+}
+
+type ChainConfig = EVMChainConfig | BitcoinChainConfig;
+
 const CHAIN_CONFIGS: Record<string, ChainConfig> = {
+  // EVM Chains
   ethereum: {
+    type: "evm",
     name: "Ethereum",
     chainId: 1,
     rpcUrl: "https://eth.llamarpc.com",
@@ -20,45 +31,104 @@ const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     viemChain: mainnet,
   },
   sepolia: {
+    type: "evm",
     name: "Sepolia",
     chainId: 11155111,
     rpcUrl: "https://rpc.sepolia.org",
     explorerUrl: "https://sepolia.etherscan.io",
     viemChain: sepolia,
   },
-  // Add more chains as needed
+
+  // Bitcoin Chains
+  bitcoin: {
+    type: "bitcoin",
+    network: "mainnet",
+  },
+  "bitcoin-testnet": {
+    type: "bitcoin",
+    network: "testnet",
+  },
 };
 
 export class ChainFactory {
   static createChain(chainType: string): Chain {
     const normalizedChainType = chainType.toLowerCase();
+    const config = CHAIN_CONFIGS[normalizedChainType];
 
-    if (normalizedChainType in CHAIN_CONFIGS) {
-      const config = CHAIN_CONFIGS[normalizedChainType];
-      return new EVMChain(
-        config.name,
-        config.chainId,
-        config.rpcUrl,
-        config.explorerUrl,
-        config.viemChain,
-      );
+    if (!config) {
+      throw new Error(`Unsupported chain type: ${chainType}`);
     }
 
-    switch (normalizedChainType) {
-      case "bitcoin":
-        return new BitcoinChain("Bitcoin", 0x00, "https://blockstream.info");
-      case "bitcoin-testnet":
-        return new BitcoinChain(
-          "Bitcoin Testnet",
-          0x6f,
-          "https://blockstream.info/testnet",
+    switch (config.type) {
+      case "evm":
+        return new EVMChain(
+          config.name,
+          config.chainId,
+          config.rpcUrl,
+          config.explorerUrl,
+          config.viemChain,
         );
-      default:
-        throw new Error(`Unsupported chain type: ${chainType}`);
+
+      case "bitcoin":
+        return new BitcoinChain(config.network, config.explorerUrl);
     }
   }
 
   static getSupportedChains(): string[] {
-    return [...Object.keys(CHAIN_CONFIGS), "bitcoin", "bitcoin-testnet"];
+    return Object.keys(CHAIN_CONFIGS);
   }
+
+  static getSupportedChainsByType(): Record<string, string[]> {
+    const chainsByType: Record<string, string[]> = {
+      evm: [],
+      bitcoin: [],
+    };
+
+    Object.entries(CHAIN_CONFIGS).forEach(([chainName, config]) => {
+      chainsByType[config.type].push(chainName);
+    });
+
+    return chainsByType;
+  }
+
+  static isEVMChain(chainType: string): boolean {
+    const config = CHAIN_CONFIGS[chainType.toLowerCase()];
+    return config?.type === "evm";
+  }
+
+  static isBitcoinChain(chainType: string): boolean {
+    const config = CHAIN_CONFIGS[chainType.toLowerCase()];
+    return config?.type === "bitcoin";
+  }
+
+  static validateChainType(chainType: string): void {
+    if (!CHAIN_CONFIGS[chainType.toLowerCase()]) {
+      throw new Error(
+        `Unsupported chain type: ${chainType}. Supported chains are: ${ChainFactory.getSupportedChains().join(
+          ", ",
+        )}`,
+      );
+    }
+  }
+
+  static getConfig(chainType: string): ChainConfig {
+    const config = CHAIN_CONFIGS[chainType.toLowerCase()];
+    if (!config) {
+      throw new Error(`Unsupported chain type: ${chainType}`);
+    }
+    return config;
+  }
+}
+
+// Type guard functions for config types
+export function isEVMChainConfig(
+  config: ChainConfig,
+): config is EVMChainConfig {
+  return config.type === "evm";
+}
+
+export function isBitcoinChainConfig(
+  config: ChainConfig,
+): config is BitcoinChainConfig {
+  return config.type === "bitcoin";
 }

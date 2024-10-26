@@ -10,9 +10,18 @@ import {
   MPC_PUBLIC_KEY,
   NEAR_ACCOUNT_ID,
 } from "./config";
+import { BitcoinChain } from "./chains/BitcoinChain";
 
 export interface DeployContractOptions {
   waitForConfirmation?: boolean;
+  index?: number;
+}
+
+export interface BitcoinTransactionRequest {
+  from: string;
+  to: string;
+  amount: number; // in satoshis
+  publicKey: string;
 }
 
 export class MPCChainSignatures {
@@ -26,6 +35,10 @@ export class MPCChainSignatures {
     this.jsonOutput = jsonOutput;
     this.mpcSigner = new MPCSigner(MPC_CONTRACT_ID, MPC_PATH, jsonOutput);
     this.transactionSigner = new TransactionSigner(this.mpcSigner, jsonOutput);
+  }
+
+  private getPath(chainType: string, index?: number): string {
+    return index !== undefined ? `${chainType},${index}` : MPC_PATH;
   }
 
   private log(...args: any[]) {
@@ -50,6 +63,7 @@ export class MPCChainSignatures {
 
   async generateAddress(
     chainType: string,
+    options: any = {},
   ): Promise<{ address: string; publicKey?: string }> {
     if (!this.initialized) {
       await this.initialize();
@@ -59,10 +73,16 @@ export class MPCChainSignatures {
       const chain = ChainFactory.createChain(chainType);
       this.log(`\nGenerating ${chainType} address...`);
 
+      // Generate dynamic path based on chain type and index
+      const path =
+        options.index !== undefined
+          ? `${chainType},${options.index}`
+          : MPC_PATH;
+
       const result = await chain.generateAddress(
         MPC_PUBLIC_KEY,
         NEAR_ACCOUNT_ID,
-        MPC_PATH,
+        path,
       );
 
       if (this.jsonOutput) {
@@ -180,6 +200,13 @@ export class MPCChainSignatures {
       await this.initialize();
     }
 
+    const path = this.getPath(chainType, options.index);
+    this.transactionSigner = new TransactionSigner(
+      this.mpcSigner,
+      this.jsonOutput,
+      path,
+    );
+
     // Create ContractDeployer instance with current options
     this.contractDeployer = new ContractDeployer(
       this.transactionSigner,
@@ -234,6 +261,78 @@ export class MPCChainSignatures {
             error: errorMessage,
           }),
         );
+      }
+
+      throw error;
+    }
+  }
+
+  async sendBitcoinTransaction(
+    chainType: string,
+    transaction: BitcoinTransactionRequest,
+  ): Promise<{ txHash: string; explorerUrl: string }> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const chain = ChainFactory.createChain(chainType);
+    if (!(chain instanceof BitcoinChain)) {
+      throw new Error("Chain must be a Bitcoin chain");
+    }
+
+    try {
+      this.log("\nPreparing Bitcoin transaction...");
+      this.log("From:", transaction.from);
+      this.log("To:", transaction.to);
+      this.log("Amount:", transaction.amount, "satoshis");
+
+      // Create a signer function that uses our MPCSigner
+      const signer = async (payload: number[]) => {
+        const signature = await this.mpcSigner.sign(payload);
+        if (!signature) {
+          throw new Error("Failed to get signature from MPC");
+        }
+        return {
+          r: signature.r.toString("hex"),
+          s: signature.s.toString("hex"),
+          v: signature.v,
+        };
+      };
+
+      const txHash = await chain.sendBitcoinTransaction(transaction, signer);
+
+      const result = {
+        txHash,
+        explorerUrl: chain.getExplorerUrl(txHash),
+      };
+
+      if (this.jsonOutput) {
+        console.log(
+          JSON.stringify({
+            success: true,
+            ...result,
+          }),
+        );
+      } else {
+        this.log("\n✅ Transaction sent successfully!");
+        this.log("📝 Transaction Hash:", txHash);
+        this.log("🔍 Explorer URL:", result.explorerUrl);
+      }
+
+      return result;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+
+      if (this.jsonOutput) {
+        console.log(
+          JSON.stringify({
+            success: false,
+            error: errorMessage,
+          }),
+        );
+      } else {
+        console.error("\n❌ Error sending Bitcoin transaction:", errorMessage);
       }
 
       throw error;

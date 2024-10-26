@@ -43,13 +43,16 @@ export class EVMChain implements Chain {
     publicKey: string,
     accountId: string,
     path: string,
-  ): Promise<string> {
+  ): Promise<any> {
     const childPublicKey = await deriveChildPublicKey(
       najPublicKeyStrToUncompressedHexPoint(publicKey),
       accountId,
       path,
     );
-    return uncompressedHexPointToEvmAddress(childPublicKey);
+    return {
+      address: uncompressedHexPointToEvmAddress(childPublicKey),
+      publicKey: childPublicKey,
+    };
   }
 
   validateAddress(address: string): boolean {
