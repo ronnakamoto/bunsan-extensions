@@ -129,6 +129,85 @@
         ]
       },
       {
+        "path": "/contract-call",
+        "method": "POST",
+        "command": "contract-call",
+        "description": "Call a smart contract method using NEAR MPC",
+        "parameters": [
+          {
+            "name": "chain",
+            "type": "string",
+            "required": true,
+            "description": "Chain to call the contract on (e.g., ethereum, sepolia)",
+            "source": "body"
+          },
+          {
+            "name": "to",
+            "type": "string",
+            "required": true,
+            "description": "Contract address",
+            "source": "body"
+          },
+          {
+            "name": "from",
+            "type": "string",
+            "required": true,
+            "description": "From address",
+            "source": "body"
+          },
+          {
+            "name": "method",
+            "type": "string",
+            "required": true,
+            "description": "Method name to call",
+            "source": "body"
+          },
+          {
+            "name": "abi",
+            "type": "string",
+            "required": true,
+            "description": "Contract ABI (JSON string) or path to .json file",
+            "source": "body"
+          },
+          {
+            "name": "args",
+            "type": "array",
+            "required": false,
+            "description": "Method arguments",
+            "source": "body"
+          },
+          {
+            "name": "index",
+            "type": "number",
+            "required": false,
+            "description": "Index for path generation",
+            "source": "body"
+          },
+          {
+            "name": "value",
+            "type": "string",
+            "required": false,
+            "description": "ETH value to send (in wei)",
+            "source": "body"
+          },
+          {
+            "name": "gasLimit",
+            "type": "string",
+            "required": false,
+            "description": "Custom gas limit",
+            "source": "body"
+          },
+          {
+            "name": "json",
+            "type": "boolean",
+            "required": true,
+            "default": true,
+            "description": "Output the result as JSON",
+            "source": "body"
+          }
+        ]
+      },
+      {
         "path": "/help",
         "method": "GET",
         "command": "help",

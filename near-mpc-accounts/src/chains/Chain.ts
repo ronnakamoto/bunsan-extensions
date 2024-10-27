@@ -6,6 +6,23 @@ import {
   Address,
 } from "viem";
 
+export interface ContractCallParams {
+  from: Address;
+  to: Address;
+  method: string;
+  args?: any[];
+  value?: bigint;
+  abi: any[];
+  gasLimit?: bigint;
+  index?: number;
+  jsonOutput?: boolean;
+}
+
+export interface ContractCallResult {
+  hash: Hash;
+  explorerUrl: string;
+}
+
 export interface Chain {
   generateAddress(
     publicKey: string,
@@ -24,5 +41,8 @@ export interface Chain {
   getWalletClient(): WalletClient<Transport, ViemChain>;
   getGasPrice(): Promise<bigint>;
   estimateGas(transaction: any): Promise<bigint>;
-  sendTransaction(signedTx: `0x${string}`): Promise<`0x${string}`>;
+  sendTransaction(
+    signedTx: `0x${string}` | string,
+  ): Promise<`0x${string}` | string>;
+  callContract(params: ContractCallParams): Promise<ContractCallResult>;
 }

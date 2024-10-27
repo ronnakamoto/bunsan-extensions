@@ -79996,6 +79996,7 @@ function createWalletClient(parameters) {
 }
 
 // node_modules/viem/_esm/index.js
+init_encodeFunctionData();
 init_getAddress();
 init_isAddress();
 
@@ -80288,6 +80289,72 @@ var EVMChain = class {
     return this.publicClient.sendRawTransaction({
       serializedTransaction: signedTx
     });
+  }
+  async callContract(params) {
+    if (!this.validateAddress(params.to)) {
+      throw new Error(`Invalid contract address: ${params.to}`);
+    }
+    if (!this.validateAddress(params.from)) {
+      throw new Error(`Invalid sender address: ${params.from}`);
+    }
+    try {
+      const functionAbi = params.abi.find(
+        (item) => item.type === "function" && item.name === params.method
+      );
+      if (!functionAbi) {
+        throw new Error(`Function ${params.method} not found in ABI`);
+      }
+      const encodedData = encodeFunctionData({
+        abi: [functionAbi],
+        // Use only the specific function ABI
+        functionName: params.method,
+        args: params.args || []
+      });
+      const nonce = await this.publicClient.getTransactionCount({
+        address: params.from
+      });
+      const gasPrice = await this.getGasPrice();
+      const transaction = {
+        to: params.to,
+        from: params.from,
+        data: encodedData,
+        nonce,
+        value: params.value || BigInt(0),
+        gasPrice,
+        gasLimit: params.gasLimit || BigInt(1e6),
+        // Default 1M gas
+        chainId: this.chainId
+      };
+      if (!params.gasLimit) {
+        try {
+          transaction.gasLimit = await this.estimateGas(transaction);
+          transaction.gasLimit = transaction.gasLimit * BigInt(110) / BigInt(100);
+        } catch (error) {
+          if (!params.jsonOutput) {
+            console.warn(
+              "Gas estimation failed, using default gas limit:",
+              error
+            );
+          }
+        }
+      }
+      return {
+        transaction
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes("nonce too low")) {
+          throw new Error("Transaction has already been submitted");
+        }
+        if (error.message.includes("insufficient funds")) {
+          throw new Error("Insufficient funds for transaction");
+        }
+        if (error.message.includes("gas too low") || error.message.includes("underpriced")) {
+          throw new Error("Gas price too low for current network conditions");
+        }
+      }
+      throw error;
+    }
   }
 };
 
@@ -87888,6 +87955,9 @@ var BitcoinChain = class {
       "Use sendBitcoinTransaction instead for Bitcoin transactions"
     );
   }
+  async callContract(params) {
+    throw new Error("Bitcoin does not support smart contract calls");
+  }
 };
 
 // node_modules/viem/_esm/chains/definitions/mainnet.js
@@ -88738,9 +88808,56 @@ Generating ${chainType} address...`);
       throw error;
     }
   }
+  async callContract(chainType, params) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    const chain = ChainFactory.createChain(chainType);
+    if (!chain.supportsSmartContracts()) {
+      throw new Error(`Chain ${chainType} does not support smart contracts`);
+    }
+    try {
+      const path = this.getPath(chainType, params.index);
+      this.transactionSigner = new TransactionSigner(
+        this.mpcSigner,
+        this.jsonOutput,
+        path
+      );
+      const preparedTx = await chain.callContract({
+        ...params,
+        jsonOutput: this.jsonOutput
+      });
+      if (!preparedTx || !preparedTx.transaction) {
+        throw new Error("Failed to prepare transaction");
+      }
+      const txHash = await this.transactionSigner.signAndSendTransaction(
+        chain,
+        preparedTx.transaction,
+        params.from
+      );
+      return {
+        hash: txHash,
+        explorerUrl: chain.getExplorerUrl(txHash)
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (this.jsonOutput) {
+        console.log(
+          JSON.stringify({
+            success: false,
+            error: errorMessage
+          })
+        );
+      } else {
+        console.error("\n\u274C Error calling contract:", errorMessage);
+      }
+      throw error;
+    }
+  }
 };
 
 // src/cli.ts
+var import_fs3 = require("fs");
 function logNonJsonOutput(app) {
   console.log(source_default.white.bold("Welcome to NEAR MPC Accounts"));
   console.log(
@@ -88889,6 +89006,67 @@ Generating ${options.chain} address...`));
         console.error("\n\u274C Error:", error.message);
       }
       process.exit(1);
+    }
+  });
+  program.command("contract-call").description("Call a smart contract method").requiredOption("-c, --chain <chain>", "Chain to call the contract on").requiredOption("-t, --to <address>", "Contract address").requiredOption("-f, --from <address>", "From address").requiredOption("-m, --method <name>", "Method name to call").requiredOption("-a, --abi <path>", "Path to ABI file or JSON string").option("-i, --index <number>", "Index for path generation").option("-v, --value <amount>", "ETH value to send (in wei)").option("-g, --gas-limit <limit>", "Custom gas limit").option("--args [args...]", "Method arguments").option("--json", "Output in JSON format").action(async (options) => {
+    const app = new MPCChainSignatures(options.json);
+    try {
+      let abi2;
+      try {
+        abi2 = options.abi.endsWith(".json") ? JSON.parse((0, import_fs3.readFileSync)(options.abi, "utf8")) : JSON.parse(options.abi);
+      } catch (error) {
+        throw new Error(`Failed to parse ABI: ${error.message}`);
+      }
+      const args = options.args?.map((arg) => {
+        if (arg.toLowerCase() === "true") return true;
+        if (arg.toLowerCase() === "false") return false;
+        if (/^\d+$/.test(arg)) return BigInt(arg);
+        return arg;
+      });
+      if (!options.json) {
+        logNonJsonOutput(app);
+        console.log(source_default.cyan("\nCalling contract method..."));
+        console.log(source_default.white("Contract:"), source_default.yellow(options.to));
+        console.log(source_default.white("Method:"), source_default.yellow(options.method));
+        console.log(source_default.white("From:"), source_default.yellow(options.from));
+        if (args) {
+          console.log(source_default.white("Arguments:"), source_default.yellow(args));
+        }
+        if (options.value) {
+          console.log(
+            source_default.white("Value:"),
+            source_default.yellow(options.value),
+            "wei"
+          );
+        }
+      }
+      const result = await app.callContract(options.chain, {
+        to: options.to,
+        from: options.from,
+        method: options.method,
+        args: args || [],
+        abi: abi2,
+        value: options.value ? BigInt(options.value) : void 0,
+        gasLimit: options.gasLimit ? BigInt(options.gasLimit) : void 0,
+        index: options.index ? parseInt(options.index) : void 0
+      });
+      if (options.json) {
+        outputJson({
+          success: true,
+          data: result
+        });
+      } else {
+        console.log(source_default.green("\n\u2705 Contract call successful!"));
+        console.log(source_default.white("\n\u{1F4DD} Transaction Details:"));
+        console.log(source_default.white("Hash:"), source_default.yellow(result.hash));
+        console.log(
+          source_default.white("Explorer URL:"),
+          source_default.yellow(result.explorerUrl)
+        );
+        process.exit(0);
+      }
+    } catch (error) {
+      handleError(error, Boolean(options.json));
     }
   });
   process.on("uncaughtException", (error) => {

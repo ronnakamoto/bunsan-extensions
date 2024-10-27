@@ -1,6 +1,7 @@
 import { program } from "commander";
 import chalk from "chalk";
 import { MPCChainSignatures } from "./MPCChainSignatures";
+import { readFileSync } from "fs";
 
 interface JsonOutput {
   success: boolean;
@@ -222,6 +223,91 @@ async function main(): Promise<void> {
           console.error("\n❌ Error:", error.message);
         }
         process.exit(1);
+      }
+    });
+
+  program
+    .command("contract-call")
+    .description("Call a smart contract method")
+    .requiredOption("-c, --chain <chain>", "Chain to call the contract on")
+    .requiredOption("-t, --to <address>", "Contract address")
+    .requiredOption("-f, --from <address>", "From address")
+    .requiredOption("-m, --method <name>", "Method name to call")
+    .requiredOption("-a, --abi <path>", "Path to ABI file or JSON string")
+    .option("-i, --index <number>", "Index for path generation")
+    .option("-v, --value <amount>", "ETH value to send (in wei)")
+    .option("-g, --gas-limit <limit>", "Custom gas limit")
+    .option("--args [args...]", "Method arguments")
+    .option("--json", "Output in JSON format")
+    .action(async (options) => {
+      const app = new MPCChainSignatures(options.json);
+
+      try {
+        // Parse ABI
+        let abi: any[];
+        try {
+          abi = options.abi.endsWith(".json")
+            ? JSON.parse(readFileSync(options.abi, "utf8"))
+            : JSON.parse(options.abi);
+        } catch (error) {
+          throw new Error(`Failed to parse ABI: ${error.message}`);
+        }
+
+        // Parse arguments if provided
+        const args = options.args?.map((arg: string) => {
+          // Try to parse numbers and booleans
+          if (arg.toLowerCase() === "true") return true;
+          if (arg.toLowerCase() === "false") return false;
+          if (/^\d+$/.test(arg)) return BigInt(arg);
+          return arg;
+        });
+
+        if (!options.json) {
+          logNonJsonOutput(app);
+          console.log(chalk.cyan("\nCalling contract method..."));
+          console.log(chalk.white("Contract:"), chalk.yellow(options.to));
+          console.log(chalk.white("Method:"), chalk.yellow(options.method));
+          console.log(chalk.white("From:"), chalk.yellow(options.from));
+          if (args) {
+            console.log(chalk.white("Arguments:"), chalk.yellow(args));
+          }
+          if (options.value) {
+            console.log(
+              chalk.white("Value:"),
+              chalk.yellow(options.value),
+              "wei",
+            );
+          }
+        }
+
+        const result = await app.callContract(options.chain, {
+          to: options.to as `0x${string}`,
+          from: options.from as `0x${string}`,
+          method: options.method,
+          args: args || [],
+          abi,
+          value: options.value ? BigInt(options.value) : undefined,
+          gasLimit: options.gasLimit ? BigInt(options.gasLimit) : undefined,
+          index: options.index ? parseInt(options.index) : undefined,
+        });
+
+        if (options.json) {
+          outputJson({
+            success: true,
+            data: result,
+          });
+        } else {
+          console.log(chalk.green("\n✅ Contract call successful!"));
+          console.log(chalk.white("\n📝 Transaction Details:"));
+          console.log(chalk.white("Hash:"), chalk.yellow(result.hash));
+          console.log(
+            chalk.white("Explorer URL:"),
+            chalk.yellow(result.explorerUrl),
+          );
+          process.exit(0);
+        }
+      } catch (error) {
+        handleError(error, Boolean(options.json));
       }
     });
 
