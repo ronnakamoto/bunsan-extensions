@@ -11,6 +11,7 @@ import {
   NEAR_ACCOUNT_ID,
 } from "./config";
 import { BitcoinChain } from "./chains/BitcoinChain";
+import { ContractCallParams, ContractCallResult } from "./chains/Chain";
 
 export interface DeployContractOptions {
   waitForConfirmation?: boolean;
@@ -333,6 +334,69 @@ export class MPCChainSignatures {
         );
       } else {
         console.error("\n❌ Error sending Bitcoin transaction:", errorMessage);
+      }
+
+      throw error;
+    }
+  }
+
+  async callContract(
+    chainType: string,
+    params: ContractCallParams,
+  ): Promise<ContractCallResult> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const chain = ChainFactory.createChain(chainType);
+
+    if (!chain.supportsSmartContracts()) {
+      throw new Error(`Chain ${chainType} does not support smart contracts`);
+    }
+
+    try {
+      const path = this.getPath(chainType, params.index);
+      // Create transaction signer with the correct path
+      this.transactionSigner = new TransactionSigner(
+        this.mpcSigner,
+        this.jsonOutput,
+        path,
+      );
+
+      // Let EVMChain prepare the transaction but use our signer to sign and send it
+      const preparedTx = await chain.callContract({
+        ...params,
+        jsonOutput: this.jsonOutput,
+      });
+
+      if (!preparedTx || !preparedTx.transaction) {
+        throw new Error("Failed to prepare transaction");
+      }
+
+      // Sign and send the transaction using our MPC signer
+      const txHash = await this.transactionSigner.signAndSendTransaction(
+        chain,
+        preparedTx.transaction,
+        params.from,
+      );
+
+      return {
+        hash: txHash,
+        explorerUrl: chain.getExplorerUrl(txHash),
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      if (this.jsonOutput) {
+        console.log(
+          JSON.stringify({
+            success: false,
+            error: errorMessage,
+          }),
+        );
+      } else {
+        console.error("\n❌ Error calling contract:", errorMessage);
       }
 
       throw error;

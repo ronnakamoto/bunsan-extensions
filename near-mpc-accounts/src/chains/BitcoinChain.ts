@@ -1,4 +1,4 @@
-import { Chain } from "./Chain";
+import { Chain, ContractCallParams, ContractCallResult } from "./Chain";
 import {
   deriveChildPublicKey,
   uncompressedHexPointToBtcAddress,
@@ -284,11 +284,13 @@ export class BitcoinChain implements Chain {
     return txHash;
   }
 
-  override async sendTransaction(
-    signedTx: `0x${string}`,
-  ): Promise<`0x${string}`> {
+  async sendTransaction(signedTx: `0x${string}`): Promise<`0x${string}`> {
     throw new Error(
       "Use sendBitcoinTransaction instead for Bitcoin transactions",
     );
+  }
+
+  async callContract(params: ContractCallParams): Promise<ContractCallResult> {
+    throw new Error("Bitcoin does not support smart contract calls");
   }
 }
