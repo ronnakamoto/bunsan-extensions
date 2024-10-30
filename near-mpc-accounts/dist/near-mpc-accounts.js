@@ -87960,6 +87960,28 @@ var BitcoinChain = class {
   }
 };
 
+// node_modules/viem/_esm/chains/definitions/auroraTestnet.js
+var auroraTestnet = /* @__PURE__ */ defineChain({
+  id: 1313161555,
+  name: "Aurora Testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH"
+  },
+  rpcUrls: {
+    default: { http: ["https://testnet.aurora.dev"] }
+  },
+  blockExplorers: {
+    default: {
+      name: "Aurorascan",
+      url: "https://testnet.aurorascan.dev",
+      apiUrl: "https://testnet.aurorascan.dev/api"
+    }
+  },
+  testnet: true
+});
+
 // node_modules/viem/_esm/chains/definitions/mainnet.js
 var mainnet = /* @__PURE__ */ defineChain({
   id: 1,
@@ -88030,7 +88052,7 @@ var CHAIN_CONFIGS = {
     type: "evm",
     name: "Ethereum",
     chainId: 1,
-    rpcUrl: "https://eth.llamarpc.com",
+    rpcUrl: "http://localhost:8080/eth",
     explorerUrl: "https://etherscan.io",
     viemChain: mainnet
   },
@@ -88038,9 +88060,17 @@ var CHAIN_CONFIGS = {
     type: "evm",
     name: "Sepolia",
     chainId: 11155111,
-    rpcUrl: "https://rpc.sepolia.org",
+    rpcUrl: "http://localhost:8080/sepolia",
     explorerUrl: "https://sepolia.etherscan.io",
     viemChain: sepolia
+  },
+  auroratestnet: {
+    type: "evm",
+    name: "Aurora Testnet",
+    chainId: 1313161555,
+    rpcUrl: "http://localhost:8080/aurora-testnet",
+    explorerUrl: "https://explorer.testnet.aurora.dev",
+    viemChain: auroraTestnet
   },
   // Bitcoin Chains
   bitcoin: {
@@ -89014,19 +89044,19 @@ async function main() {
         console.log(source_default.cyan(`
 Generating ${options.chain} address...`));
       }
-      const address = await app.generateAddress(options.chain, {
+      const result = await app.generateAddress(options.chain, {
         index: options.index ? parseInt(options.index) : void 0
       });
       if (options.json) {
         outputJson({
           success: true,
-          data: address
+          data: result
         });
       } else {
         console.log(source_default.green("\n\u2705 Address generated successfully!"));
         console.log(
           source_default.white("\n\u{1F511} Your new address:"),
-          source_default.yellow(address)
+          source_default.yellow(result.address)
         );
         process.exit(0);
       }
