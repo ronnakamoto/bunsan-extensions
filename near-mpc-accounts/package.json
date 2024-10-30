@@ -106,6 +106,7 @@
           {
             "name": "constructorArgs",
             "type": "array",
+            "array_style": "variadic",
             "required": false,
             "description": "Constructor arguments",
             "source": "body"
@@ -172,6 +173,7 @@
           {
             "name": "args",
             "type": "array",
+            "array_style": "variadic",
             "required": false,
             "description": "Method arguments",
             "source": "body"
