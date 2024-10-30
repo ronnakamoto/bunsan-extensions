@@ -388,14 +388,8 @@ export class MPCChainSignatures {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage,
-          }),
-        );
-      } else {
+      // Only log in non-JSON mode
+      if (!this.jsonOutput) {
         console.error("\n❌ Error calling contract:", errorMessage);
       }
 

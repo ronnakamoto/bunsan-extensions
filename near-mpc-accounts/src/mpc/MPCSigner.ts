@@ -13,6 +13,7 @@ import { Console } from "console";
 import { Writable } from "stream";
 import { FailoverRpcProvider } from "near-api-js/lib/providers/failover-rpc-provider";
 import { JsonRpcProvider } from "near-api-js/lib/providers/json-rpc-provider";
+import { Provider } from "near-api-js/lib/providers";
 
 const { Near, Account, keyStores, KeyPair, utils } = nearAPI;
 
@@ -22,6 +23,106 @@ const nullOutputStream = new Writable({
     callback();
   },
 });
+
+interface JsonRpcCapableProvider extends Provider {
+  sendJsonRpc?: (method: string, params: any[]) => Promise<any>;
+}
+
+class QuietFailoverProvider implements Provider {
+  private currentProviderIndex: number = 0;
+
+  constructor(
+    private jsonOutput: boolean,
+    private providers: JsonRpcProvider[],
+    private maxAttempts: number = 3,
+  ) {}
+
+  private switchProvider(index: number): void {
+    if (!this.jsonOutput) {
+      console.log(`Switched to provider at the index ${index}`);
+    }
+    this.currentProviderIndex = index;
+  }
+
+  async query(params: any): Promise<any> {
+    return this.withBackoff((provider) => provider.query(params));
+  }
+
+  async status(): Promise<any> {
+    return this.withBackoff((provider) => provider.status());
+  }
+
+  async sendTransaction(params: any): Promise<any> {
+    return this.withBackoff((provider) => provider.sendTransaction(params));
+  }
+
+  async txStatus(txHash: Uint8Array, accountId: string): Promise<any> {
+    return this.withBackoff((provider) => provider.txStatus(txHash, accountId));
+  }
+
+  async txStatusReceipts(txHash: Uint8Array, accountId: string): Promise<any> {
+    return this.withBackoff((provider) =>
+      provider.txStatusReceipts(txHash, accountId),
+    );
+  }
+
+  async block(params: any): Promise<any> {
+    return this.withBackoff((provider) => provider.block(params));
+  }
+
+  async chunk(params: any): Promise<any> {
+    return this.withBackoff((provider) => provider.chunk(params));
+  }
+
+  async validators(params: any): Promise<any> {
+    return this.withBackoff((provider) => provider.validators(params));
+  }
+
+  async experimental_protocolConfig(params: any): Promise<any> {
+    return this.withBackoff((provider) =>
+      // @ts-ignore - Some providers might not implement this method
+      provider.experimental_protocolConfig?.(params),
+    );
+  }
+
+  async lightClientProof(params: any): Promise<any> {
+    return this.withBackoff((provider) => provider.lightClientProof(params));
+  }
+
+  private async withBackoff<T>(
+    fn: (provider: JsonRpcProvider) => Promise<T>,
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
+      try {
+        const result = await fn(this.providers[this.currentProviderIndex]);
+        return result;
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt < this.maxAttempts - 1) {
+          const nextIndex =
+            (this.currentProviderIndex + 1) % this.providers.length;
+          this.switchProvider(nextIndex);
+        }
+      }
+    }
+
+    if (lastError) {
+      if (this.jsonOutput) {
+        throw new Error(
+          `Failed to execute request after ${this.maxAttempts} attempts`,
+        );
+      } else {
+        throw lastError;
+      }
+    }
+
+    throw new Error(
+      `Failed to execute request after ${this.maxAttempts} attempts`,
+    );
+  }
+}
 
 export class MPCSigner {
   private near!: nearAPI.Near;
@@ -120,7 +221,10 @@ export class MPCSigner {
           { retries: 3, backoff: 2, wait: 500 },
         ),
       ];
-      const provider = new FailoverRpcProvider(jsonProviders);
+      const provider = new QuietFailoverProvider(
+        this.jsonOutput,
+        jsonProviders,
+      );
 
       const config = {
         networkId: "testnet",
@@ -156,11 +260,20 @@ export class MPCSigner {
 
       // Override JSON-RPC logging
       if (this.jsonOutput) {
-        const provider = this.account.connection.provider;
-        const originalSendJsonRpc = provider.sendJsonRpc.bind(provider);
-        provider.sendJsonRpc = async (...args) => {
-          return originalSendJsonRpc(...args);
-        };
+        const provider = this.account.connection
+          .provider as JsonRpcCapableProvider;
+        try {
+          if (provider && provider.sendJsonRpc) {
+            const originalSendJsonRpc = provider.sendJsonRpc.bind(provider);
+            provider.sendJsonRpc = async (...args) => {
+              // Silently handle the RPC call without logging
+              return originalSendJsonRpc(...args);
+            };
+          }
+        } catch (error) {
+          // Silently continue if we can't override the logging
+          console.debug("Failed to override JSON-RPC logging:", error);
+        }
       }
     } catch (error) {
       this.restoreLogs();

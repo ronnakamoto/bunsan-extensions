@@ -68836,7 +68836,7 @@ var require_failover_rpc_provider = __commonJS({
     var utils_1 = require_commonjs2();
     var types_1 = require_commonjs();
     var provider_1 = require_provider3();
-    var FailoverRpcProvider2 = class extends provider_1.Provider {
+    var FailoverRpcProvider = class extends provider_1.Provider {
       /** @hidden */
       providers;
       currentProviderIndex;
@@ -69051,7 +69051,7 @@ var require_failover_rpc_provider = __commonJS({
         return this.withBackoff((currentProvider) => currentProvider.gasPrice(blockId));
       }
     };
-    exports2.FailoverRpcProvider = FailoverRpcProvider2;
+    exports2.FailoverRpcProvider = FailoverRpcProvider;
   }
 });
 
@@ -88135,7 +88135,6 @@ if (!NEAR_ACCOUNT_ID || !NEAR_PRIVATE_KEY || !MPC_PATH || !MPC_CONTRACT_ID || !M
 // src/mpc/MPCSigner.ts
 var import_console = require("console");
 var import_stream = require("stream");
-var import_failover_rpc_provider = __toESM(require_failover_rpc_provider2());
 var import_json_rpc_provider = __toESM(require_json_rpc_provider3());
 var { Near, Account, keyStores, KeyPair, utils } = nearAPI;
 var nullOutputStream = new import_stream.Writable({
@@ -88143,6 +88142,84 @@ var nullOutputStream = new import_stream.Writable({
     callback();
   }
 });
+var QuietFailoverProvider = class {
+  constructor(jsonOutput, providers, maxAttempts = 3) {
+    this.jsonOutput = jsonOutput;
+    this.providers = providers;
+    this.maxAttempts = maxAttempts;
+    this.currentProviderIndex = 0;
+  }
+  switchProvider(index2) {
+    if (!this.jsonOutput) {
+      console.log(`Switched to provider at the index ${index2}`);
+    }
+    this.currentProviderIndex = index2;
+  }
+  async query(params) {
+    return this.withBackoff((provider) => provider.query(params));
+  }
+  async status() {
+    return this.withBackoff((provider) => provider.status());
+  }
+  async sendTransaction(params) {
+    return this.withBackoff((provider) => provider.sendTransaction(params));
+  }
+  async txStatus(txHash, accountId) {
+    return this.withBackoff((provider) => provider.txStatus(txHash, accountId));
+  }
+  async txStatusReceipts(txHash, accountId) {
+    return this.withBackoff(
+      (provider) => provider.txStatusReceipts(txHash, accountId)
+    );
+  }
+  async block(params) {
+    return this.withBackoff((provider) => provider.block(params));
+  }
+  async chunk(params) {
+    return this.withBackoff((provider) => provider.chunk(params));
+  }
+  async validators(params) {
+    return this.withBackoff((provider) => provider.validators(params));
+  }
+  async experimental_protocolConfig(params) {
+    return this.withBackoff(
+      (provider) => (
+        // @ts-ignore - Some providers might not implement this method
+        provider.experimental_protocolConfig?.(params)
+      )
+    );
+  }
+  async lightClientProof(params) {
+    return this.withBackoff((provider) => provider.lightClientProof(params));
+  }
+  async withBackoff(fn) {
+    let lastError = null;
+    for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
+      try {
+        const result = await fn(this.providers[this.currentProviderIndex]);
+        return result;
+      } catch (error) {
+        lastError = error;
+        if (attempt < this.maxAttempts - 1) {
+          const nextIndex = (this.currentProviderIndex + 1) % this.providers.length;
+          this.switchProvider(nextIndex);
+        }
+      }
+    }
+    if (lastError) {
+      if (this.jsonOutput) {
+        throw new Error(
+          `Failed to execute request after ${this.maxAttempts} attempts`
+        );
+      } else {
+        throw lastError;
+      }
+    }
+    throw new Error(
+      `Failed to execute request after ${this.maxAttempts} attempts`
+    );
+  }
+};
 var MPCSigner = class {
   constructor(mpcContractId, path, jsonOutput = false) {
     this.path = path;
@@ -88216,7 +88293,10 @@ var MPCSigner = class {
           { retries: 3, backoff: 2, wait: 500 }
         )
       ];
-      const provider = new import_failover_rpc_provider.FailoverRpcProvider(jsonProviders);
+      const provider = new QuietFailoverProvider(
+        this.jsonOutput,
+        jsonProviders
+      );
       const config = {
         networkId: "testnet",
         keyStore,
@@ -88254,10 +88334,16 @@ var MPCSigner = class {
       this.account = new Account(this.near.connection, this.accountId);
       if (this.jsonOutput) {
         const provider2 = this.account.connection.provider;
-        const originalSendJsonRpc = provider2.sendJsonRpc.bind(provider2);
-        provider2.sendJsonRpc = async (...args) => {
-          return originalSendJsonRpc(...args);
-        };
+        try {
+          if (provider2 && provider2.sendJsonRpc) {
+            const originalSendJsonRpc = provider2.sendJsonRpc.bind(provider2);
+            provider2.sendJsonRpc = async (...args) => {
+              return originalSendJsonRpc(...args);
+            };
+          }
+        } catch (error) {
+          console.debug("Failed to override JSON-RPC logging:", error);
+        }
       }
     } catch (error) {
       this.restoreLogs();
@@ -88865,14 +88951,7 @@ Generating ${chainType} address...`);
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage
-          })
-        );
-      } else {
+      if (!this.jsonOutput) {
         console.error("\n\u274C Error calling contract:", errorMessage);
       }
       throw error;
