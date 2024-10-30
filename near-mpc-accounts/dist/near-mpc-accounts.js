@@ -52245,11 +52245,11 @@ var require_json_rpc_provider = __commonJS({
       maxFeePerGas: true,
       maxPriorityFeePerGas: true
     };
-    var JsonRpcProvider = (
+    var JsonRpcProvider2 = (
       /** @class */
       function(_super) {
-        __extends(JsonRpcProvider2, _super);
-        function JsonRpcProvider2(url, network) {
+        __extends(JsonRpcProvider3, _super);
+        function JsonRpcProvider3(url, network) {
           var _this = this;
           var networkOrReady = network;
           if (networkOrReady == null) {
@@ -52277,7 +52277,7 @@ var require_json_rpc_provider = __commonJS({
           _this._nextId = 42;
           return _this;
         }
-        Object.defineProperty(JsonRpcProvider2.prototype, "_cache", {
+        Object.defineProperty(JsonRpcProvider3.prototype, "_cache", {
           get: function() {
             if (this._eventLoopCache == null) {
               this._eventLoopCache = {};
@@ -52287,10 +52287,10 @@ var require_json_rpc_provider = __commonJS({
           enumerable: false,
           configurable: true
         });
-        JsonRpcProvider2.defaultUrl = function() {
+        JsonRpcProvider3.defaultUrl = function() {
           return "http://localhost:8545";
         };
-        JsonRpcProvider2.prototype.detectNetwork = function() {
+        JsonRpcProvider3.prototype.detectNetwork = function() {
           var _this = this;
           if (!this._cache["detectNetwork"]) {
             this._cache["detectNetwork"] = this._uncachedDetectNetwork();
@@ -52300,7 +52300,7 @@ var require_json_rpc_provider = __commonJS({
           }
           return this._cache["detectNetwork"];
         };
-        JsonRpcProvider2.prototype._uncachedDetectNetwork = function() {
+        JsonRpcProvider3.prototype._uncachedDetectNetwork = function() {
           return __awaiter(this, void 0, void 0, function() {
             var chainId, error_5, error_6, getNetwork;
             return __generator(this, function(_a) {
@@ -52351,13 +52351,13 @@ var require_json_rpc_provider = __commonJS({
             });
           });
         };
-        JsonRpcProvider2.prototype.getSigner = function(addressOrIndex) {
+        JsonRpcProvider3.prototype.getSigner = function(addressOrIndex) {
           return new JsonRpcSigner(_constructorGuard, this, addressOrIndex);
         };
-        JsonRpcProvider2.prototype.getUncheckedSigner = function(addressOrIndex) {
+        JsonRpcProvider3.prototype.getUncheckedSigner = function(addressOrIndex) {
           return this.getSigner(addressOrIndex).connectUnchecked();
         };
-        JsonRpcProvider2.prototype.listAccounts = function() {
+        JsonRpcProvider3.prototype.listAccounts = function() {
           var _this = this;
           return this.send("eth_accounts", []).then(function(accounts) {
             return accounts.map(function(a) {
@@ -52365,7 +52365,7 @@ var require_json_rpc_provider = __commonJS({
             });
           });
         };
-        JsonRpcProvider2.prototype.send = function(method, params) {
+        JsonRpcProvider3.prototype.send = function(method, params) {
           var _this = this;
           var request = {
             method,
@@ -52407,7 +52407,7 @@ var require_json_rpc_provider = __commonJS({
           }
           return result;
         };
-        JsonRpcProvider2.prototype.prepareRequest = function(method, params) {
+        JsonRpcProvider3.prototype.prepareRequest = function(method, params) {
           switch (method) {
             case "getBlockNumber":
               return ["eth_blockNumber", []];
@@ -52452,7 +52452,7 @@ var require_json_rpc_provider = __commonJS({
           }
           return null;
         };
-        JsonRpcProvider2.prototype.perform = function(method, params) {
+        JsonRpcProvider3.prototype.perform = function(method, params) {
           return __awaiter(this, void 0, void 0, function() {
             var tx, feeData, args, error_7;
             return __generator(this, function(_a) {
@@ -52494,13 +52494,13 @@ var require_json_rpc_provider = __commonJS({
             });
           });
         };
-        JsonRpcProvider2.prototype._startEvent = function(event) {
+        JsonRpcProvider3.prototype._startEvent = function(event) {
           if (event.tag === "pending") {
             this._startPending();
           }
           _super.prototype._startEvent.call(this, event);
         };
-        JsonRpcProvider2.prototype._startPending = function() {
+        JsonRpcProvider3.prototype._startPending = function() {
           if (this._pendingFilter != null) {
             return;
           }
@@ -52543,13 +52543,13 @@ var require_json_rpc_provider = __commonJS({
           }).catch(function(error) {
           });
         };
-        JsonRpcProvider2.prototype._stopEvent = function(event) {
+        JsonRpcProvider3.prototype._stopEvent = function(event) {
           if (event.tag === "pending" && this.listenerCount("pending") === 0) {
             this._pendingFilter = null;
           }
           _super.prototype._stopEvent.call(this, event);
         };
-        JsonRpcProvider2.hexlifyTransaction = function(transaction, allowExtra) {
+        JsonRpcProvider3.hexlifyTransaction = function(transaction, allowExtra) {
           var allowed = (0, properties_1.shallowCopy)(allowedTransactionKeys);
           if (allowExtra) {
             for (var key in allowExtra) {
@@ -52581,10 +52581,10 @@ var require_json_rpc_provider = __commonJS({
           }
           return result;
         };
-        return JsonRpcProvider2;
+        return JsonRpcProvider3;
       }(base_provider_1.BaseProvider)
     );
-    exports2.JsonRpcProvider = JsonRpcProvider;
+    exports2.JsonRpcProvider = JsonRpcProvider2;
   }
 });
 
@@ -68501,7 +68501,7 @@ var require_json_rpc_provider2 = __commonJS({
     var REQUEST_RETRY_WAIT = 500;
     var REQUEST_RETRY_WAIT_BACKOFF = 1.5;
     var _nextId = 123;
-    var JsonRpcProvider = class extends provider_1.Provider {
+    var JsonRpcProvider2 = class extends provider_1.Provider {
       /** @hidden */
       connection;
       /** @hidden */
@@ -68823,7 +68823,7 @@ ${JSON.stringify(result, null, 2)}`, (0, utils_1.getErrorTypeFromErrorMessage)(r
         return result;
       }
     };
-    exports2.JsonRpcProvider = JsonRpcProvider;
+    exports2.JsonRpcProvider = JsonRpcProvider2;
   }
 });
 
@@ -68836,7 +68836,7 @@ var require_failover_rpc_provider = __commonJS({
     var utils_1 = require_commonjs2();
     var types_1 = require_commonjs();
     var provider_1 = require_provider3();
-    var FailoverRpcProvider = class extends provider_1.Provider {
+    var FailoverRpcProvider2 = class extends provider_1.Provider {
       /** @hidden */
       providers;
       currentProviderIndex;
@@ -69051,7 +69051,7 @@ var require_failover_rpc_provider = __commonJS({
         return this.withBackoff((currentProvider) => currentProvider.gasPrice(blockId));
       }
     };
-    exports2.FailoverRpcProvider = FailoverRpcProvider;
+    exports2.FailoverRpcProvider = FailoverRpcProvider2;
   }
 });
 
@@ -88135,6 +88135,8 @@ if (!NEAR_ACCOUNT_ID || !NEAR_PRIVATE_KEY || !MPC_PATH || !MPC_CONTRACT_ID || !M
 // src/mpc/MPCSigner.ts
 var import_console = require("console");
 var import_stream = require("stream");
+var import_failover_rpc_provider = __toESM(require_failover_rpc_provider2());
+var import_json_rpc_provider = __toESM(require_json_rpc_provider3());
 var { Near, Account, keyStores, KeyPair, utils } = nearAPI;
 var nullOutputStream = new import_stream.Writable({
   write(chunk, encoding, callback) {
@@ -88194,10 +88196,32 @@ var MPCSigner = class {
         this.accountId,
         KeyPair.fromString(privateKey)
       );
+      const jsonProviders = [
+        new import_json_rpc_provider.JsonRpcProvider(
+          {
+            url: "https://rpc.testnet.near.org"
+          },
+          { retries: 3, backoff: 2, wait: 500 }
+        ),
+        new import_json_rpc_provider.JsonRpcProvider(
+          {
+            url: "https://rpc.testnet.pagoda.co"
+          },
+          { retries: 3, backoff: 2, wait: 500 }
+        ),
+        new import_json_rpc_provider.JsonRpcProvider(
+          {
+            url: "https://test.rpc.fastnear.com"
+          },
+          { retries: 3, backoff: 2, wait: 500 }
+        )
+      ];
+      const provider = new import_failover_rpc_provider.FailoverRpcProvider(jsonProviders);
       const config = {
         networkId: "testnet",
         keyStore,
-        nodeUrl: "https://rpc.testnet.near.org",
+        provider,
+        nodeUrl: "https://rpc.testnet.pagoda.co",
         walletUrl: "https://testnet.mynearwallet.com/",
         helperUrl: "https://helper.testnet.near.org",
         explorerUrl: "https://testnet.nearblocks.io",
@@ -88229,9 +88253,9 @@ var MPCSigner = class {
       this.near = new Near(config);
       this.account = new Account(this.near.connection, this.accountId);
       if (this.jsonOutput) {
-        const provider = this.account.connection.provider;
-        const originalSendJsonRpc = provider.sendJsonRpc.bind(provider);
-        provider.sendJsonRpc = async (...args) => {
+        const provider2 = this.account.connection.provider;
+        const originalSendJsonRpc = provider2.sendJsonRpc.bind(provider2);
+        provider2.sendJsonRpc = async (...args) => {
           return originalSendJsonRpc(...args);
         };
       }
@@ -89020,7 +89044,7 @@ Generating ${options.chain} address...`));
       const args = options.args?.map((arg) => {
         if (arg.toLowerCase() === "true") return true;
         if (arg.toLowerCase() === "false") return false;
-        if (/^\d+$/.test(arg)) return BigInt(arg);
+        if (/^\d+$/.test(arg)) return Number(arg);
         return arg;
       });
       if (!options.json) {

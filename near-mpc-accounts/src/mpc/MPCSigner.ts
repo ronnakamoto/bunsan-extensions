@@ -11,6 +11,8 @@ import {
 import { KeyPairString } from "near-api-js/lib/utils/key_pair";
 import { Console } from "console";
 import { Writable } from "stream";
+import { FailoverRpcProvider } from "near-api-js/lib/providers/failover-rpc-provider";
+import { JsonRpcProvider } from "near-api-js/lib/providers/json-rpc-provider";
 
 const { Near, Account, keyStores, KeyPair, utils } = nearAPI;
 
@@ -98,10 +100,33 @@ export class MPCSigner {
         KeyPair.fromString(privateKey as KeyPairString) as nearAPI.KeyPair,
       );
 
+      const jsonProviders = [
+        new JsonRpcProvider(
+          {
+            url: "https://rpc.testnet.near.org",
+          },
+          { retries: 3, backoff: 2, wait: 500 },
+        ),
+        new JsonRpcProvider(
+          {
+            url: "https://rpc.testnet.pagoda.co",
+          },
+          { retries: 3, backoff: 2, wait: 500 },
+        ),
+        new JsonRpcProvider(
+          {
+            url: "https://test.rpc.fastnear.com",
+          },
+          { retries: 3, backoff: 2, wait: 500 },
+        ),
+      ];
+      const provider = new FailoverRpcProvider(jsonProviders);
+
       const config = {
         networkId: "testnet",
         keyStore,
-        nodeUrl: "https://rpc.testnet.near.org",
+        provider,
+        nodeUrl: "https://rpc.testnet.pagoda.co",
         walletUrl: "https://testnet.mynearwallet.com/",
         helperUrl: "https://helper.testnet.near.org",
         explorerUrl: "https://testnet.nearblocks.io",
