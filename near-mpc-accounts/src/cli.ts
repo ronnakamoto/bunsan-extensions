@@ -258,7 +258,7 @@ async function main(): Promise<void> {
           // Try to parse numbers and booleans
           if (arg.toLowerCase() === "true") return true;
           if (arg.toLowerCase() === "false") return false;
-          if (/^\d+$/.test(arg)) return BigInt(arg);
+          if (/^\d+$/.test(arg)) return Number(arg);
           return arg;
         });
 
