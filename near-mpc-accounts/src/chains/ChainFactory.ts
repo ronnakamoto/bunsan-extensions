@@ -1,7 +1,12 @@
 import { Chain } from "./Chain";
 import { EVMChain } from "./EVMChain";
 import { BitcoinChain, BitcoinNetwork } from "./BitcoinChain";
-import { mainnet, sepolia, Chain as ViemChain } from "viem/chains";
+import {
+  mainnet,
+  sepolia,
+  auroraTestnet,
+  Chain as ViemChain,
+} from "viem/chains";
 
 interface EVMChainConfig {
   type: "evm";
@@ -26,7 +31,7 @@ const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     type: "evm",
     name: "Ethereum",
     chainId: 1,
-    rpcUrl: "https://eth.llamarpc.com",
+    rpcUrl: "http://localhost:8080/eth",
     explorerUrl: "https://etherscan.io",
     viemChain: mainnet,
   },
@@ -34,9 +39,17 @@ const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     type: "evm",
     name: "Sepolia",
     chainId: 11155111,
-    rpcUrl: "https://rpc.sepolia.org",
+    rpcUrl: "http://localhost:8080/sepolia",
     explorerUrl: "https://sepolia.etherscan.io",
     viemChain: sepolia,
+  },
+  auroratestnet: {
+    type: "evm",
+    name: "Aurora Testnet",
+    chainId: 1313161555,
+    rpcUrl: "http://localhost:8080/aurora-testnet",
+    explorerUrl: "https://explorer.testnet.aurora.dev",
+    viemChain: auroraTestnet,
   },
 
   // Bitcoin Chains

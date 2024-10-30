@@ -90,20 +90,20 @@ async function main(): Promise<void> {
           console.log(chalk.cyan(`\nGenerating ${options.chain} address...`));
         }
 
-        const address = await app.generateAddress(options.chain, {
+        const result = await app.generateAddress(options.chain, {
           index: options.index ? parseInt(options.index) : undefined,
         });
 
         if (options.json) {
           outputJson({
             success: true,
-            data: address,
+            data: result,
           });
         } else {
           console.log(chalk.green("\n✅ Address generated successfully!"));
           console.log(
             chalk.white("\n🔑 Your new address:"),
-            chalk.yellow(address),
+            chalk.yellow(result.address),
           );
           process.exit(0);
         }
