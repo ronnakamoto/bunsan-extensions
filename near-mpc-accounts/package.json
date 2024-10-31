@@ -90,16 +90,9 @@
             "source": "body"
           },
           {
-            "name": "abi",
-            "type": "string",
-            "required": true,
-            "description": "Contract ABI (JSON string) or path to .json file",
-            "source": "body"
-          },
-          {
             "name": "index",
             "type": "number",
-            "required": false,
+            "required": true,
             "description": "Index for path generation",
             "source": "body"
           },

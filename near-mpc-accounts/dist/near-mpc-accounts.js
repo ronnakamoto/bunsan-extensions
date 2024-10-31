@@ -88596,13 +88596,9 @@ var ContractDeployer = class {
           }
         }
       }
-      if (this.jsonOutput) {
-        console.log(this.formatResponse(result));
-        process.exit(0);
-      }
       return result;
     } catch (error) {
-      return this.handleError(error);
+      throw error;
     }
   }
   cleanBytecode(bytecode) {
@@ -88871,13 +88867,14 @@ Generating ${chainType} address...`);
       }
     }
     try {
-      return await this.contractDeployer.deployContract(
+      const result = await this.contractDeployer.deployContract(
         chain,
         bytecode,
         JSON.stringify(abi2),
         fromAddress,
         constructorArgs
       );
+      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       throw error;
@@ -89142,7 +89139,7 @@ Generating ${options.chain} address...`));
   program.command("deploy-contract").description("Deploy a smart contract").requiredOption("-c, --chain <chain>", "Chain to deploy the contract on").requiredOption(
     "-b, --bytecode <path>",
     "Path to bytecode file or hex string"
-  ).requiredOption("-a, --abi <path>", "Path to ABI file or JSON string").requiredOption("-f, --from <address>", "From address").option("-i, --index <number>", "Index for path generation").option("--json", "Output in JSON format").option("--no-confirmation", "Do not wait for transaction confirmation").option("--constructor-args [args...]", "Constructor arguments").action(async (options) => {
+  ).option("-a, --abi <path>", "Path to ABI file or JSON string").requiredOption("-f, --from <address>", "From address").option("-i, --index <number>", "Index for path generation").option("--json", "Output in JSON format").option("--no-confirmation", "Do not wait for transaction confirmation").option("--constructor-args [args...]", "Constructor arguments").action(async (options) => {
     try {
       const mpc = new MPCChainSignatures(options.json || false);
       const result = await mpc.deployContract(
@@ -89156,8 +89153,21 @@ Generating ${options.chain} address...`));
         },
         options.constructorArgs || []
       );
+      if (options.json) {
+        outputJson({
+          success: true,
+          data: result
+        });
+      } else {
+        console.log(source_default.green("\n\u2705 Contract deployed successfully!"));
+        console.log(
+          source_default.white("\n\u{1F511} Contract address:"),
+          source_default.yellow(result.contractAddress)
+        );
+        process.exit(0);
+      }
     } catch (error) {
-      process.exit(1);
+      handleError(error, Boolean(options.json));
     }
   });
   program.command("send-bitcoin").description("Send a Bitcoin transaction").requiredOption(

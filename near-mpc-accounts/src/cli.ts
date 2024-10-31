@@ -167,7 +167,7 @@ async function main(): Promise<void> {
       "-b, --bytecode <path>",
       "Path to bytecode file or hex string",
     )
-    .requiredOption("-a, --abi <path>", "Path to ABI file or JSON string")
+    .option("-a, --abi <path>", "Path to ABI file or JSON string")
     .requiredOption("-f, --from <address>", "From address")
     .option("-i, --index <number>", "Index for path generation")
     .option("--json", "Output in JSON format")
@@ -189,10 +189,21 @@ async function main(): Promise<void> {
           options.constructorArgs || [],
         );
 
-        // The result handling is now managed by the ContractDeployer class
+        if (options.json) {
+          outputJson({
+            success: true,
+            data: result,
+          });
+        } else {
+          console.log(chalk.green("\n✅ Contract deployed successfully!"));
+          console.log(
+            chalk.white("\n🔑 Contract address:"),
+            chalk.yellow(result.contractAddress),
+          );
+          process.exit(0);
+        }
       } catch (error) {
-        // Error handling is now managed by the ContractDeployer class
-        process.exit(1);
+        handleError(error, Boolean(options.json));
       }
     });
 
