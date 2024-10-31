@@ -88060,7 +88060,7 @@ var CHAIN_CONFIGS = {
     type: "evm",
     name: "Sepolia",
     chainId: 11155111,
-    rpcUrl: "http://localhost:8080/sepolia",
+    rpcUrl: "https://1rpc.io/sepolia",
     explorerUrl: "https://sepolia.etherscan.io",
     viemChain: sepolia
   },
@@ -88068,7 +88068,7 @@ var CHAIN_CONFIGS = {
     type: "evm",
     name: "Aurora Testnet",
     chainId: 1313161555,
-    rpcUrl: "http://localhost:8080/aurora-testnet",
+    rpcUrl: "https://testnet.aurora.dev",
     explorerUrl: "https://explorer.testnet.aurora.dev",
     viemChain: auroraTestnet
   },
@@ -88521,10 +88521,10 @@ var ContractDeployer = class {
       }
       const publicClient = chain.getPublicClient();
       this.log("\nFetching deployment parameters...");
-      const [nonce, gasPrice] = await Promise.all([
-        publicClient.getTransactionCount({ address: normalizedAddress }),
-        chain.getGasPrice()
-      ]);
+      const nonce = await publicClient.getTransactionCount({
+        address: normalizedAddress
+      });
+      const gasPrice = await chain.getGasPrice();
       this.log("Nonce:", nonce);
       this.log("Gas Price:", gasPrice.toString());
       const calculatedContractAddress = import_ethers.ethers.utils.getContractAddress({
