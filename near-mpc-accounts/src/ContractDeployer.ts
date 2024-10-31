@@ -94,10 +94,10 @@ export class ContractDeployer {
       const publicClient = chain.getPublicClient();
       this.log("\nFetching deployment parameters...");
 
-      const [nonce, gasPrice] = await Promise.all([
-        publicClient.getTransactionCount({ address: normalizedAddress }),
-        chain.getGasPrice(),
-      ]);
+      const nonce = await publicClient.getTransactionCount({
+        address: normalizedAddress,
+      });
+      const gasPrice = await chain.getGasPrice();
 
       this.log("Nonce:", nonce);
       this.log("Gas Price:", gasPrice.toString());

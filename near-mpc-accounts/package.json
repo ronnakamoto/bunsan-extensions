@@ -105,7 +105,7 @@
             "source": "body"
           },
           {
-            "name": "waitForConfirmation",
+            "name": "no-confirmation",
             "type": "boolean",
             "required": false,
             "default": true,
