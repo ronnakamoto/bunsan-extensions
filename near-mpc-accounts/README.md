@@ -144,6 +144,113 @@ Content-Type: application/json
 }
 ```
 
+### Send ETH
+
+Send ETH or other native tokens on EVM chains
+
+CLI:
+```bash
+bunsan run-extension near-mpc-accounts -- send-eth \
+  --chain <chain> \
+  --from <address> \
+  --to <address> \
+  --value <amount_in_wei> \
+  [--gas-limit <limit>] \
+  [--gas-price <price_in_wei>] \
+  [--index <number>] \
+  [--json]
+```
+
+HTTP:
+
+```
+POST /extensions/near-mpc-accounts/send-eth
+Content-Type: application/json
+
+{
+  "chain": "ethereum",
+  "from": "0x...",
+  "to": "0x...",
+  "value": "1000000000000000000",
+  "gasLimit": "21000",
+  "gasPrice": "20000000000",
+  "index": 0,
+  "json": true
+}
+```
+Note: The value is in wei (1 ETH = 1000000000000000000 wei)
+
+### Send Bitcoin
+
+Send Bitcoin transactions
+
+CLI:
+
+```bash
+bunsan run-extension near-mpc-accounts -- send-bitcoin \
+  --chain <bitcoin|bitcoin-testnet> \
+  --from <address> \
+  --to <address> \
+  --amount <amount_in_satoshis> \
+  --public-key <key> \
+  [--json]
+```
+
+HTTP:
+
+```
+POST /extensions/near-mpc-accounts/send-bitcoin
+Content-Type: application/json
+
+{
+  "chain": "bitcoin-testnet",
+  "from": "...",
+  "to": "...",
+  "amount": 100000,
+  "publicKey": "...",
+  "json": true
+}
+```
+
+### Contract Call
+Call a smart contract method
+
+CLI:
+
+```bash
+bunsan run-extension near-mpc-accounts -- contract-call \
+  --chain <chain> \
+  --to <contract_address> \
+  --from <sender_address> \
+  --method <method_name> \
+  --abi <abi_path_or_json> \
+  [--args ...args] \
+  [--value <amount_in_wei>] \
+  [--gas-limit <limit>] \
+  [--index <number>] \
+  [--json]
+```
+
+HTTP:
+
+```
+POST /extensions/near-mpc-accounts/contract-call
+Content-Type: application/json
+
+{
+  "chain": "ethereum",
+  "to": "0x...",
+  "from": "0x...",
+  "method": "transfer",
+  "abi": "[...]",
+  "args": ["0x...", "1000"],
+  "value": "0",
+  "gasLimit": "100000",
+  "index": 0,
+  "json": true
+}
+```
+
 ## Credits
 
 Inspired by - [Chainsig Script](https://github.com/near-examples/chainsig-script)

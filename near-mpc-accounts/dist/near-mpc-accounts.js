@@ -88402,7 +88402,7 @@ var MPCSigner = class {
           key_version: 0
         }
       };
-      const attachedDeposit = this.isProxyCall ? utils.format.parseNearAmount("1") : utils.format.parseNearAmount("0.2");
+      const attachedDeposit = this.isProxyCall ? utils.format.parseNearAmount("1") : utils.format.parseNearAmount("0.25");
       this.log(
         "sign payload",
         formattedPayload.length > 200 ? `[${formattedPayload.length} bytes]` : formattedPayload
@@ -88880,14 +88880,6 @@ Generating ${chainType} address...`);
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage
-          })
-        );
-      }
       throw error;
     }
   }
@@ -88920,14 +88912,7 @@ Generating ${chainType} address...`);
         txHash,
         explorerUrl: chain.getExplorerUrl(txHash)
       };
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: true,
-            ...result
-          })
-        );
-      } else {
+      if (!this.jsonOutput) {
         this.log("\n\u2705 Transaction sent successfully!");
         this.log("\u{1F4DD} Transaction Hash:", txHash);
         this.log("\u{1F50D} Explorer URL:", result.explorerUrl);
@@ -88935,14 +88920,7 @@ Generating ${chainType} address...`);
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage
-          })
-        );
-      } else {
+      if (!this.jsonOutput) {
         console.error("\n\u274C Error sending Bitcoin transaction:", errorMessage);
       }
       throw error;
@@ -88983,6 +88961,66 @@ Generating ${chainType} address...`);
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (!this.jsonOutput) {
         console.error("\n\u274C Error calling contract:", errorMessage);
+      }
+      throw error;
+    }
+  }
+  async sendEVMTransaction(chainType, params) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    const chain = ChainFactory.createChain(chainType);
+    if (!ChainFactory.isEVMChain(chainType)) {
+      throw new Error(`Chain ${chainType} is not an EVM chain`);
+    }
+    if (!isAddress(params.from) || !isAddress(params.to)) {
+      throw new Error("Invalid address format");
+    }
+    try {
+      this.log("\nPreparing ETH transfer...");
+      this.log("From:", params.from);
+      this.log("To:", params.to);
+      this.log("Value:", params.value.toString(), "wei");
+      const path = this.getPath(chainType, params.index);
+      this.transactionSigner = new TransactionSigner(
+        this.mpcSigner,
+        this.jsonOutput,
+        path
+      );
+      const nonce = await chain.getPublicClient().getTransactionCount({
+        address: params.from
+      });
+      const gasPrice = params.gasPrice || await chain.getGasPrice();
+      const transaction = {
+        to: params.to,
+        from: params.from,
+        nonce,
+        value: params.value,
+        gasPrice,
+        gasLimit: params.gasLimit || BigInt(21e3),
+        // Standard ETH transfer gas
+        chainId: chain.getChainId(),
+        data: "0x"
+      };
+      const txHash = await this.transactionSigner.signAndSendTransaction(
+        chain,
+        transaction,
+        params.from
+      );
+      const result = {
+        hash: txHash,
+        explorerUrl: chain.getExplorerUrl(txHash)
+      };
+      if (!this.jsonOutput) {
+        this.log("\n\u2705 Transaction sent successfully!");
+        this.log("\u{1F4DD} Transaction Hash:", txHash);
+        this.log("\u{1F50D} Explorer URL:", chain.getExplorerUrl(txHash));
+      }
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!this.jsonOutput) {
+        console.error("\n\u274C Error sending ETH transaction:", errorMessage);
       }
       throw error;
     }
@@ -89190,6 +89228,46 @@ Generating ${options.chain} address...`));
         });
       } else {
         console.log(source_default.green("\n\u2705 Contract call successful!"));
+        console.log(source_default.white("\n\u{1F4DD} Transaction Details:"));
+        console.log(source_default.white("Hash:"), source_default.yellow(result.hash));
+        console.log(
+          source_default.white("Explorer URL:"),
+          source_default.yellow(result.explorerUrl)
+        );
+        process.exit(0);
+      }
+    } catch (error) {
+      handleError(error, Boolean(options.json));
+    }
+  });
+  program.command("send-eth").description("Send ETH or other native tokens on EVM chains").requiredOption(
+    "-c, --chain <chain>",
+    "Chain to use (e.g., ethereum, sepolia, aurora)"
+  ).requiredOption("-f, --from <address>", "Sender's address").requiredOption("-t, --to <address>", "Recipient's address").requiredOption(
+    "-v, --value <amount>",
+    "Amount to send in wei (e.g., 0.01 ETH = 10000000000000000 wei)"
+  ).option("-i, --index <number>", "Index for path generation").option("-g, --gas-limit <limit>", "Custom gas limit (default: 21000)").option("-p, --gas-price <price>", "Custom gas price in wei").option("--json", "Output the result as JSON").action(async (options) => {
+    const app = new MPCChainSignatures(options.json);
+    try {
+      if (!options.json) {
+        logNonJsonOutput(app);
+        console.log(source_default.cyan("\nPreparing ETH transfer..."));
+      }
+      const result = await app.sendEVMTransaction(options.chain, {
+        from: options.from,
+        to: options.to,
+        value: BigInt(options.value),
+        index: options.index ? parseInt(options.index) : void 0,
+        gasLimit: options.gasLimit ? BigInt(options.gasLimit) : void 0,
+        gasPrice: options.gasPrice ? BigInt(options.gasPrice) : void 0
+      });
+      if (options.json) {
+        outputJson({
+          success: true,
+          data: result
+        });
+      } else {
+        console.log(source_default.green("\n\u2705 Transfer successful!"));
         console.log(source_default.white("\n\u{1F4DD} Transaction Details:"));
         console.log(source_default.white("Hash:"), source_default.yellow(result.hash));
         console.log(

@@ -210,6 +210,71 @@
         ]
       },
       {
+        "path": "/send-eth",
+        "method": "POST",
+        "command": "send-eth",
+        "description": "Send ETH or other native tokens on EVM chains",
+        "parameters": [
+          {
+            "name": "chain",
+            "type": "string",
+            "required": true,
+            "description": "Chain to use (e.g., ethereum, sepolia)",
+            "source": "body"
+          },
+          {
+            "name": "from",
+            "type": "string",
+            "required": true,
+            "description": "Sender's address",
+            "source": "body"
+          },
+          {
+            "name": "to",
+            "type": "string",
+            "required": true,
+            "description": "Recipient's address",
+            "source": "body"
+          },
+          {
+            "name": "value",
+            "type": "string",
+            "required": true,
+            "description": "Amount to send in wei (e.g., 0.01 ETH = 10000000000000000 wei)",
+            "source": "body"
+          },
+          {
+            "name": "index",
+            "type": "number",
+            "required": false,
+            "description": "Index for path generation",
+            "source": "body"
+          },
+          {
+            "name": "gasLimit",
+            "type": "string",
+            "required": false,
+            "description": "Custom gas limit (default: 21000)",
+            "source": "body"
+          },
+          {
+            "name": "gasPrice",
+            "type": "string",
+            "required": false,
+            "description": "Custom gas price in wei",
+            "source": "body"
+          },
+          {
+            "name": "json",
+            "type": "boolean",
+            "required": true,
+            "default": true,
+            "description": "Output the result as JSON",
+            "source": "body"
+          }
+        ]
+      },
+      {
         "path": "/help",
         "method": "GET",
         "command": "help",
