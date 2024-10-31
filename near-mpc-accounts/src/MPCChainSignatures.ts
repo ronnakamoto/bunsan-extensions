@@ -25,6 +25,15 @@ export interface BitcoinTransactionRequest {
   publicKey: string;
 }
 
+export interface EVMTransferParams {
+  from: string;
+  to: string;
+  value: bigint;
+  index?: number;
+  gasLimit?: bigint;
+  gasPrice?: bigint;
+}
+
 export class MPCChainSignatures {
   private mpcSigner: MPCSigner;
   private transactionSigner: TransactionSigner;
@@ -255,14 +264,14 @@ export class MPCChainSignatures {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
 
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage,
-          }),
-        );
-      }
+      // if (this.jsonOutput) {
+      //   console.log(
+      //     JSON.stringify({
+      //       success: false,
+      //       error: errorMessage,
+      //     }),
+      //   );
+      // }
 
       throw error;
     }
@@ -307,14 +316,7 @@ export class MPCChainSignatures {
         explorerUrl: chain.getExplorerUrl(txHash),
       };
 
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: true,
-            ...result,
-          }),
-        );
-      } else {
+      if (!this.jsonOutput) {
         this.log("\n✅ Transaction sent successfully!");
         this.log("📝 Transaction Hash:", txHash);
         this.log("🔍 Explorer URL:", result.explorerUrl);
@@ -325,14 +327,7 @@ export class MPCChainSignatures {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
 
-      if (this.jsonOutput) {
-        console.log(
-          JSON.stringify({
-            success: false,
-            error: errorMessage,
-          }),
-        );
-      } else {
+      if (!this.jsonOutput) {
         console.error("\n❌ Error sending Bitcoin transaction:", errorMessage);
       }
 
@@ -391,6 +386,88 @@ export class MPCChainSignatures {
       // Only log in non-JSON mode
       if (!this.jsonOutput) {
         console.error("\n❌ Error calling contract:", errorMessage);
+      }
+
+      throw error;
+    }
+  }
+
+  async sendEVMTransaction(
+    chainType: string,
+    params: EVMTransferParams,
+  ): Promise<{ hash: string; explorerUrl: string }> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const chain = ChainFactory.createChain(chainType);
+
+    if (!ChainFactory.isEVMChain(chainType)) {
+      throw new Error(`Chain ${chainType} is not an EVM chain`);
+    }
+
+    if (!isAddress(params.from) || !isAddress(params.to)) {
+      throw new Error("Invalid address format");
+    }
+
+    try {
+      this.log("\nPreparing ETH transfer...");
+      this.log("From:", params.from);
+      this.log("To:", params.to);
+      this.log("Value:", params.value.toString(), "wei");
+
+      const path = this.getPath(chainType, params.index);
+      this.transactionSigner = new TransactionSigner(
+        this.mpcSigner,
+        this.jsonOutput,
+        path,
+      );
+
+      // Get current nonce
+      const nonce = await chain.getPublicClient().getTransactionCount({
+        address: params.from as `0x${string}`,
+      });
+
+      // Get gas price if not provided
+      const gasPrice = params.gasPrice || (await chain.getGasPrice());
+
+      // Prepare transaction
+      const transaction = {
+        to: params.to as `0x${string}`,
+        from: params.from as `0x${string}`,
+        nonce,
+        value: params.value,
+        gasPrice,
+        gasLimit: params.gasLimit || BigInt(21000), // Standard ETH transfer gas
+        chainId: chain.getChainId(),
+        data: "0x" as const,
+      };
+
+      // Sign and send the transaction
+      const txHash = await this.transactionSigner.signAndSendTransaction(
+        chain,
+        transaction,
+        params.from as `0x${string}`,
+      );
+
+      const result = {
+        hash: txHash,
+        explorerUrl: chain.getExplorerUrl(txHash),
+      };
+
+      if (!this.jsonOutput) {
+        this.log("\n✅ Transaction sent successfully!");
+        this.log("📝 Transaction Hash:", txHash);
+        this.log("🔍 Explorer URL:", chain.getExplorerUrl(txHash));
+      }
+
+      return result;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      if (!this.jsonOutput) {
+        console.error("\n❌ Error sending ETH transaction:", errorMessage);
       }
 
       throw error;

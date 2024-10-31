@@ -314,7 +314,7 @@ export class MPCSigner {
 
       const attachedDeposit = this.isProxyCall
         ? utils.format.parseNearAmount("1")
-        : utils.format.parseNearAmount("0.2");
+        : utils.format.parseNearAmount("0.25");
 
       this.log(
         "sign payload",

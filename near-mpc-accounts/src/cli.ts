@@ -311,6 +311,62 @@ async function main(): Promise<void> {
       }
     });
 
+  // Sending ETH and Tokens
+  program
+    .command("send-eth")
+    .description("Send ETH or other native tokens on EVM chains")
+    .requiredOption(
+      "-c, --chain <chain>",
+      "Chain to use (e.g., ethereum, sepolia, aurora)",
+    )
+    .requiredOption("-f, --from <address>", "Sender's address")
+    .requiredOption("-t, --to <address>", "Recipient's address")
+    .requiredOption(
+      "-v, --value <amount>",
+      "Amount to send in wei (e.g., 0.01 ETH = 10000000000000000 wei)",
+    )
+    .option("-i, --index <number>", "Index for path generation")
+    .option("-g, --gas-limit <limit>", "Custom gas limit (default: 21000)")
+    .option("-p, --gas-price <price>", "Custom gas price in wei")
+    .option("--json", "Output the result as JSON")
+    .action(async (options) => {
+      const app = new MPCChainSignatures(options.json);
+
+      try {
+        if (!options.json) {
+          logNonJsonOutput(app);
+          console.log(chalk.cyan("\nPreparing ETH transfer..."));
+        }
+
+        const result = await app.sendEVMTransaction(options.chain, {
+          from: options.from,
+          to: options.to,
+          value: BigInt(options.value),
+          index: options.index ? parseInt(options.index) : undefined,
+          gasLimit: options.gasLimit ? BigInt(options.gasLimit) : undefined,
+          gasPrice: options.gasPrice ? BigInt(options.gasPrice) : undefined,
+        });
+
+        if (options.json) {
+          outputJson({
+            success: true,
+            data: result,
+          });
+        } else {
+          console.log(chalk.green("\n✅ Transfer successful!"));
+          console.log(chalk.white("\n📝 Transaction Details:"));
+          console.log(chalk.white("Hash:"), chalk.yellow(result.hash));
+          console.log(
+            chalk.white("Explorer URL:"),
+            chalk.yellow(result.explorerUrl),
+          );
+          process.exit(0);
+        }
+      } catch (error) {
+        handleError(error, Boolean(options.json));
+      }
+    });
+
   // Single handlers for uncaught errors
   process.on("uncaughtException", (error: Error) => {
     handleError(error, process.argv.includes("--json"));
