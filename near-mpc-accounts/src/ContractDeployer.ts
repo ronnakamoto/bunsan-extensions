@@ -186,14 +186,15 @@ export class ContractDeployer {
         }
       }
 
-      if (this.jsonOutput) {
-        console.log(this.formatResponse(result));
-        process.exit(0);
-      }
+      // if (this.jsonOutput) {
+      //   console.log(this.formatResponse(result));
+      //   process.exit(0);
+      // }
 
       return result;
     } catch (error) {
-      return this.handleError(error);
+      throw error;
+      // return this.handleError(error);
     }
   }
 

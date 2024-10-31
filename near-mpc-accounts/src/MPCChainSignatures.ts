@@ -253,13 +253,15 @@ export class MPCChainSignatures {
     }
 
     try {
-      return await this.contractDeployer.deployContract(
+      const result = await this.contractDeployer.deployContract(
         chain,
         bytecode,
         JSON.stringify(abi),
         fromAddress,
         constructorArgs,
       );
+
+      return result;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
